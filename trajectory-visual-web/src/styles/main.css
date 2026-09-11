@@ -1,0 +1,6 @@
+html, body, #app { height: 100%; margin: 0; font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; background: #f2f4f7; }
+* { box-sizing: border-box; }
+.page-pad { padding: 12px; }
+.mt8 { margin-top: 8px; } .mb8 { margin-bottom: 8px; }
+.num { font-variant-numeric: tabular-nums; }
+.el-card { border-radius: 6px; }

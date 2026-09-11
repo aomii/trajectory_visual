@@ -1,0 +1,37 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: trajectory-visual-server
+  profiles:
+    active: local
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+# MyBatis-Plus 全局配置（下划线字段自动映射到 camelCase 属性）
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    # 【2026-09-11】全量实验（5224 运单）每条 INSERT 都打一遍 SQL+参数会把控制台刷爆、
+    # 把实验进度日志埋掉，故默认关闭 SQL 打印。调试单条 SQL 时可临时改回：
+    #   org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+
+# SpringDoc 接口文档（访问 /swagger-ui.html）
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    com.fkhwl.nfs: info

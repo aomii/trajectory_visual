@@ -1,0 +1,69 @@
+# ============================================================
+# trajectory-visual-server 本地开发配置（local profile）
+# 前置：本地 MySQL(mysql://127.0.0.1:3306/ml_network_freight, root/root)
+#       本地 MongoDB(mongodb://127.0.0.1:27017/ml_network_freight, 无密码)
+# ============================================================
+
+spring:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/ml_network_freight?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&useAffectedRows=true&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 8
+      minimum-idle: 1
+  data:
+    mongodb:
+      uri: mongodb://127.0.0.1:27017/ml_network_freight
+
+# ---- 可视化系统自有配置 ----
+trajectory:
+  # ---- 坐标系口径 ----
+  # 源 JSON（source_data_full）与业务库 waybill 的收发货地址坐标已经是 GCJ-02
+  # （入湖前做过一次 WGS84→GCJ-02，2026-09-10 用户确认），展示层不得再转一次，
+  # 否则整体偏移约 300~600m、与高德底图和收发地址标记对不上。
+  coord:
+    source-already-gcj02: true
+
+  # 全量轨迹源目录（原始轨迹只从这里读；坐标 GCJ-02）。不硬编码于代码，由本配置注入。
+  source:
+    # 规格书原路径写为 .../00数据处理-260909/source/_data_full，实际目录名 source_data_full
+    full-data-dir: D:/aoming/电科/毕业论文 - claude/00数据处理-260909/source_data_full
+    # 文件名模式：track_{运单号}_{waybillId}.json
+    file-pattern: "track_*.json"
+    # 元数据导入/全量压缩单次扫描的文件上限：-1=全部(7709 个，全量长跑用)；本地演示建议给个上限(如 300)
+    max-files-per-job: -1
+  # 导出目录（Dashboard PNG / 指标 CSV），业务代码只读此配置，不硬编码
+  export:
+    dashboard-dir: D:/aoming/电科/毕业论文 - claude/05可视化系统/exports/dashboard
+    csv-dir: D:/aoming/电科/毕业论文 - claude/05可视化系统/exports/csv
+  # 压缩任务线程池
+  job:
+    pool-size: 1
+
+  # ---- 第 6 章实验参数（默认口径，覆盖 04实验 ExperimentConfig 的默认值） ----
+  experiment:
+    # 【用户 2026-09-09 定稿】本文移动段 DP 容差与 DP/DPS/TD-TR/Trajic 基线统一取 10m，
+    # 保证公平对比。注意：与 claude_15 论文现稿“本文15m/基线10m”不一致，重跑后论文数字需回填。
+    dp-move-tolerance-m: 10
+    baseline-tolerance-m: 10
+    # 消融“收紧移动段容差”档：本文主线已是 10m，与论文原“A-收紧至10m”重合，
+    # 故该档默认取更紧的 8m 以演示“容差收紧→保真升/压缩降”权衡（参数可改）
+    ablation-tight-tolerance-m: 8
+    # 静止识别：同坐标容差/最短停留/休息阈值沿用 v2 口径
+    stationary-same-m: 10
+    min-stay-s: 180
+    # 分块无损编码
+    # 【2026-09-11 用户定稿】Mongo 分片时长 10min → 1h：块更大、块数更少，
+    # 时间索引更稀疏；同时 6.5 部分解压的查询窗也正好是 1h（窗≈一块），语义更直观。
+    block-window-s: 3600
+    precision: 6
+    zip-level: 6
+    # 部分解压查询窗
+    query-window-s: 3600
+    query-window-fraction: 0.6
+    # 实验运单范围：-1=全部；跑小批验证时给 >0（如 50）
+    # 2026-09-11 合并 track_data 后源目录 5224 个（已剔除 <100 点），全量跑约 45–70 分钟
+    waybill-limit: -1
+    waybill-offset: 0
