@@ -32,6 +32,9 @@ public class TrajectoryEvalAlgorithmResult {
     private Double crLossyAvg;
     private Double crLosslessAvg;
     private Double crTotalAvg;
+    /** 清洗后完整点列规范文本总字节 / 编码负载总字节。 */
+    private Double crE2eGlobal;
+    private Long inputBytes;
     private Double pedAvg;
     private Double sedAvg;
     private Double srAvg;

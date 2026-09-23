@@ -32,6 +32,8 @@ public class TrajectoryEvalWaybillResult {
     private Double crLossy;
     private Double crLossless;
     private Double crTotal;
+    private Double crE2e;
+    private Long inputBytes;
     private Double pedAvg;
     private Double pedMax;
     private Double sedAvg;

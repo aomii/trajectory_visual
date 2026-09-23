@@ -251,7 +251,7 @@ public class Chapter6ExperimentRunner {
     }
 
     // ------------------------------------------------------------------
-    // 6.3 有损层分级压缩对比（主实验：本文 + DP/DPS/TD-TR/Trajic）
+    // 主实验：层次一比较有损输出；层次三把所有输出接入相同分块编码器比较端到端负载。
     // ------------------------------------------------------------------
 
     /**
@@ -260,7 +260,7 @@ public class Chapter6ExperimentRunner {
      * 对应论文 6.3~6.5 的数据主体与表 6-6/6-7/6-12。
      */
     public String runLossyCompressionCompare() {
-        TrajectoryEvalRun run = startRun("6.3 有损层分级压缩对比(本文 vs DP/DPS/TD-TR/Trajic)");
+        TrajectoryEvalRun run = startRun("多算法三层评估(统一分块编码器端到端对比)");
         String exp = "lossy-compare";
         List<Path> files = sourceFiles();
         ExperimentConfig cfg = ExperimentConfigs.from(props);
@@ -320,6 +320,8 @@ public class Chapter6ExperimentRunner {
         row.setCrLossy(o.crLossy);
         row.setCrLossless(o.store == null ? null : o.crLossless);
         row.setCrTotal(o.store == null ? null : o.crTotal);
+        row.setCrE2e(o.store == null ? null : o.crE2e);
+        row.setInputBytes(o.store == null ? null : o.cleanInputBytes);
         row.setPedAvg(o.pedAvgM);
         row.setPedMax(o.pedMaxM);
         row.setSedAvg(o.sedAvgM);
@@ -338,7 +340,7 @@ public class Chapter6ExperimentRunner {
         wbMapper.insert(row);
     }
 
-    /** 基线逐运单结果行（有损层指标；无损层不适用置空） */
+    /** 基线逐运单结果行：有损输出叠加与本文相同的分块无损编码器。 */
     private void persistBaselineRow(Long runId, PipelineOutcome o, PipelineOutcome.Baseline b) {
         TrajectoryEvalWaybillResult row = new TrajectoryEvalWaybillResult();
         row.setRunId(runId);
@@ -347,10 +349,12 @@ public class Chapter6ExperimentRunner {
         row.setAlgorithmCode(b.name);
         row.setRawPointCount(o.nClean);
         row.setKeptPointCount(b.nKept);
-        row.setChunkCount(0);
+        row.setChunkCount(b.blocks);
         row.setCrLossy(b.crLossy);
-        row.setCrLossless(null);
-        row.setCrTotal(b.crLossy); // 基线无无损层，CR_total≈其有损压缩率（口径说明见文档）
+        row.setCrLossless(b.crLossless);
+        row.setCrTotal(b.crTotal);
+        row.setCrE2e(b.crE2e);
+        row.setInputBytes(b.cleanInputBytes);
         row.setPedAvg(b.pedAvgM);
         row.setPedMax(b.pedMaxM);
         row.setSedAvg(b.sedAvgM);
@@ -358,6 +362,11 @@ public class Chapter6ExperimentRunner {
         row.setSr(b.sr);
         row.setSemanticUnitCompleteRate(b.unitIntegrity);
         row.setStayDurationPreserveRate(b.dwellFidelity);
+        row.setEncodeTimeMs(b.encodeMs);
+        row.setDecodeTimeMs(b.decodeMs);
+        row.setStorageBytes(b.zippedBytes);
+        row.setQueryTimeMs(b.queryMs);
+        row.setPartialReadRatio(b.partialBytesRatio);
         row.setCreateTime(LocalDateTime.now());
         wbMapper.insert(row);
     }
@@ -373,6 +382,10 @@ public class Chapter6ExperimentRunner {
         a.setCrLossyAvg(avg(os, o -> o.crLossy));
         a.setCrLosslessAvg(avg(os, o -> o.crLossless));
         a.setCrTotalAvg(avg(os, o -> o.crTotal));
+        long inputBytes = os.stream().mapToLong(o -> o.cleanInputBytes).sum();
+        long payloadBytes = os.stream().mapToLong(o -> o.zippedBytes).sum();
+        a.setInputBytes(inputBytes);
+        a.setCrE2eGlobal(payloadBytes == 0 ? null : (double) inputBytes / payloadBytes);
         a.setPedAvg(avg(os, o -> o.pedAvgM));
         a.setSedAvg(avg(os, o -> o.sedAvgM));
         a.setSrAvg(avg(os, o -> o.sr));
@@ -402,15 +415,24 @@ public class Chapter6ExperimentRunner {
         a.setWaybillCount(bs.size());
         a.setRawPointCount(rawTotal);
         a.setKeptPointCount(bs.stream().mapToLong(b -> b.nKept).sum());
-        a.setChunkCount(0);
+        a.setChunkCount(bs.stream().mapToInt(b -> b.blocks).sum());
         a.setCrLossyAvg(avgB(bs, b -> b.crLossy));
-        a.setCrLosslessAvg(null);
-        a.setCrTotalAvg(avgB(bs, b -> b.crLossy)); // 基线无无损层
+        a.setCrLosslessAvg(avgB(bs, b -> b.crLossless));
+        a.setCrTotalAvg(avgB(bs, b -> b.crTotal));
+        long inputBytes = bs.stream().mapToLong(b -> b.cleanInputBytes).sum();
+        long payloadBytes = bs.stream().mapToLong(b -> b.zippedBytes).sum();
+        a.setInputBytes(inputBytes);
+        a.setCrE2eGlobal(payloadBytes == 0 ? null : (double) inputBytes / payloadBytes);
         a.setPedAvg(avgB(bs, b -> b.pedAvgM));
         a.setSedAvg(avgB(bs, b -> b.sedAvgM));
         a.setSrAvg(avgB(bs, b -> b.sr));
         a.setSemanticUnitCompleteRate(avgB(bs, b -> b.unitIntegrity));
         a.setStayDurationPreserveRate(avgB(bs, b -> b.dwellFidelity));
+        a.setEncodeTimeMsAvg(avgB(bs, b -> b.encodeMs));
+        a.setDecodeTimeMsAvg(avgB(bs, b -> b.decodeMs));
+        a.setStorageBytes(payloadBytes);
+        a.setQueryTimeMsAvg(avgB(bs, b -> b.queryMs));
+        a.setPartialReadRatioAvg(avgB(bs, b -> b.partialBytesRatio));
         a.setParameterJson(ExperimentConfigs.parameterJson(props));
         a.setCreateTime(LocalDateTime.now());
         return a;

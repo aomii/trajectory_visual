@@ -124,7 +124,7 @@ function blockLabel(sec?: number | null) {
   if (!sec) return '—'
   return sec % 3600 === 0 ? (sec / 3600) + 'h' : Math.round(sec / 60) + 'min'
 }
-const metricKey = ref('crTotalAvg')
+const metricKey = ref('crE2eGlobal')
 
 const elAlg = ref<HTMLDivElement>(), elSem = ref<HTMLDivElement>(), elErr = ref<HTMLDivElement>()
 const elStorage = ref<HTMLDivElement>(), elPerf = ref<HTMLDivElement>()
@@ -136,6 +136,7 @@ const conclusions = computed(() => data.value?.conclusions || [])
 const algorithms = computed(() => data.value?.algorithmComparison || [])
 
 const metricOptions = [
+  { key: 'crE2eGlobal', short: '端到端CR' },
   { key: 'crTotalAvg', short: 'CR_total' },
   { key: 'crLossyAvg', short: 'CR_lossy' },
   { key: 'pedAvg', short: 'PED' },
@@ -163,7 +164,7 @@ const kpiCards = computed(() => {
   const kpiArr = [
     { key: 'waybillCount', label: '有效运单数', value: k.waybillCount == null ? '-' : fmtInt(k.waybillCount), unit: '', note: '参与统计的清洗后有效运单', highlight: false },
     { key: 'rawPointCount', label: '有效轨迹点数', value: k.rawPointCount == null ? '-' : fmtInt(k.rawPointCount), unit: '', note: '清洗后总点数（逐运单基准）', highlight: false },
-    { key: 'crTotalAvg', label: '总压缩率 CR_total', value: k.crTotalAvg == null ? '-' : fmtNum(k.crTotalAvg, 2), unit: 'x', note: compNote('本文总压缩率', k.crTotalAvg, 'CR_total'), highlight: false },
+    { key: 'crE2eGlobal', label: '全局端到端编码负载压缩率', value: k.crE2eGlobal == null ? '-' : fmtNum(k.crE2eGlobal, 2), unit: 'x', note: compNote('统一编码器公平比较', k.crE2eGlobal, 'crE2eGlobal'), highlight: false },
     { key: 'crLossyAvg', label: '有损层压缩率', value: k.crLossyAvg == null ? '-' : fmtNum(k.crLossyAvg, 2), unit: 'x', note: proposed ? '有损层减点数（本文' + fmtNum(proposed.crLossyAvg, 1) + ' vs DP ' + fmtNum(bestCr, 1) + '）' : '—', highlight: false },
     { key: 'srAvg', label: '语义点保留率 SR', value: k.srAvg == null ? '-' : fmtPct(k.srAvg, 0), unit: '', note: '语义锚点压缩后保留比例', highlight: k.srAvg === 1 },
     { key: 'accel', label: '部分解压加速比', value: accel.value, unit: '', note: '全量解压/部分解压（1h窗）', highlight: false }
@@ -175,7 +176,7 @@ function compNote(prefix: string, val: number, field: string) {
   const others = algorithms.value.filter((a: any) => a.algorithmCode !== 'PROPOSED' && a[field] != null)
   if (!others.length) return prefix
   const top = others.reduce((m: any, a: any) => (a[field] > (m?.[field] ?? -1) ? a : m), null)
-  if (top && field === 'crTotalAvg' && val >= top[field]) return '为全部算法最高'
+  if (top && field === 'crE2eGlobal' && val >= top[field]) return '为全部算法最高'
   return prefix + ' ' + fmtNum(val, 2)
 }
 

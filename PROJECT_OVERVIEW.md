@@ -70,6 +70,9 @@
 
 - **DP 容差统一 10m**：本文移动段与 DP/DPS/TD-TR/Trajic 基线一致（公平对比）。与 claude_15
   现稿"本文 15m / 基线 10m"不一致 → 本系统重跑出的第 6 章数字需另行回填论文表。
+- **端到端口径统一**：本文与 DP/DPS/TD-TR/Trajic 的有损输出全部进入同一分块偏移量编码器，
+  以清洗后完整点列规范文本总字节 / 编码负载总字节计算全局端到端压缩率；`CR_total`
+  只保留为逐运单内部诊断指标，不再与只有有损层的基线混比。
 - 算法核心来自 `04实验`（com.logicompress.experiment）**verbatim 移植**，保证数字可复现；
   本文、DP/DPS/TD-TR/Trajic 四基线全部完整实现（无 not_available）。
 - 数据源 7709 在线库；与论文第 6 章 152 运单实验集非同一批，故结果数字≠论文表 6-*（预期行为，用户已确认）。
@@ -83,7 +86,7 @@
 
 ## 运行速览
 
-1. `mysql ... < sql/init.sql`（全新库）；**已有库**改跑增量脚本 `sql/upgrade_20260910_waybill_meta.sql` 补收发货元数据列
+1. `mysql ... < sql/init.sql`（全新库）；**已有库**依次执行 `sql/upgrade_20260910_waybill_meta.sql` 与 `sql/upgrade_20260923_e2e_baseline.sql`
 2. 启动后端 `mvn -s D:\develop\apache-maven-3.8.2\conf\settings-tuling.xml spring-boot:run -Dspring-boot.run.profiles=local`
 3. `curl -X POST "http://127.0.0.1:8080/api/visual/waybill/admin/import-waybills?limit=300"`（重跑一次以回填历史运单的车牌/货物/收发时间地点）
 4. 运行第 6 章测试类（建议先 `-Dtrajectory.experiment.waybill-limit=50`）

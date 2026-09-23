@@ -46,6 +46,7 @@ mysql -uroot -proot -h127.0.0.1 --default-character-set=utf8mb4 < sql/init.sql
 建表：`trajectory_waybill` + 六张 `trajectory_eval_*` 结果表（规格书 §8）。`ml_network_freight` 中已有的老业务表（waybill 等）不动；系统按 waybill_id 从老 `waybill` 表回填车牌、货物、收发货地点/坐标（`send_addr_lal`/`receive_addr_lal`）与装货/卸货/接单时间（源 JSON 文件无这些字段）。
 
 > 老库已有 `trajectory_waybill` 时执行增量脚本 `sql/upgrade_20260910_waybill_meta.sql` 补列，并**重跑一次导入**才会回填历史运单的收发货元数据。
+> 2026-09-23 以前建立的实验结果表还需执行 `sql/upgrade_20260923_e2e_baseline.sql`，新增统一编码器端到端指标列；执行后重跑主实验生成新批次，旧批次保持不变。
 
 ## 4. 启动
 
@@ -73,7 +74,7 @@ mvn -s D:\develop\apache-maven-3.8.2\conf\settings-tuling.xml spring-boot:run -D
 每个实验一个 @Test，并含总入口 `runAllExperiments()`：
 
 - `runStopRecognitionExperiment` → 6.2（静态同坐标停留识别聚合，写 run.remark）
-- `runLossyCompressionCompareExperiment` → 6.3 **主实验**（本文 + DP/DPS/TD-TR/Trajic，写 run + algorithm_result(5) + waybill_result）
+- `runLossyCompressionCompareExperiment` → **多算法主实验**（层次一比较有损指标；层次三把本文 + DP/DPS/TD-TR/Trajic 全部接入同一编码器，写端到端负载指标）
 - `runLosslessEncodingExperiment` → 6.4（PROPOSED 无损层独立批次）
 - `runPartialDecompressionExperiment` → 6.5（PROPOSED 部分解压独立批次）
 - `runAblationExperiment` → 6.6.1（A0 / A-TIGHT / A2 / A3 / A4 → trajectory_eval_ablation_result）
@@ -87,7 +88,7 @@ mvn -s D:\develop\apache-maven-3.8.2\conf\settings-tuling.xml \
   -Dtest=TrajectoryChapter6ExperimentTest#runLossyCompressionCompareExperiment test
 ```
 
-> **跑全量 7709 需较长时间**（尤其 runAll 顺序跑全部实验）；建议先以 `waybill-limit` 取子集跑通，
+> **跑全量 5224 需较长时间**（尤其 runAll 顺序跑全部实验）；建议先以 `waybill-limit` 取子集跑通，
 > 再做全量长跑。每次运行独立批次（run_no 唯一），逐运单失败写 `trajectory_eval_error_record` 不中断整批。
 
 ## 7. 主要接口列表

@@ -70,7 +70,7 @@ public class Chapter6FullExperimentTest {
         log.info("== 结果已写 MySQL trajectory_eval_* 表，可到可视化系统 /dashboard 查看 ==");
     }
 
-    /** 只跑 6.3 主实验（有损层对比）——数字不对时可单独复跑，省时间 */
+    /** 只跑多算法主实验：有损层 + 统一编码器端到端对比。 */
     @Test
     public void runLossyCompareOnly() {
         printBanner();

@@ -211,6 +211,8 @@ public class EvaluationQueryService {
             kpi.put("keptPointCount", proposed.getKeptPointCount());
             kpi.put("chunkCount", proposed.getChunkCount());
             kpi.put("crTotalAvg", proposed.getCrTotalAvg());
+            kpi.put("crE2eGlobal", proposed.getCrE2eGlobal());
+            kpi.put("inputBytes", proposed.getInputBytes());
             kpi.put("crLossyAvg", proposed.getCrLossyAvg());
             kpi.put("crLosslessAvg", proposed.getCrLosslessAvg());
             kpi.put("srAvg", proposed.getSrAvg());
@@ -235,6 +237,8 @@ public class EvaluationQueryService {
             m.put("algorithmName", a.getAlgorithmName());
             m.put("waybillCount", a.getWaybillCount());
             m.put("crTotalAvg", a.getCrTotalAvg());
+            m.put("crE2eGlobal", a.getCrE2eGlobal());
+            m.put("inputBytes", a.getInputBytes());
             m.put("crLossyAvg", a.getCrLossyAvg());
             m.put("crLosslessAvg", a.getCrLosslessAvg());
             m.put("pedAvg", a.getPedAvg());
@@ -417,10 +421,11 @@ public class EvaluationQueryService {
         return out;
     }
 
-    /** 每条算法明细统计：mean/median/min/max（对 CR_total、CR_lossy、PED、SED、SR、查询耗时） */
+    /** 每条算法明细统计：mean/median/min/max。 */
     private Map<String, Object> waybillStats(List<TrajectoryEvalWaybillResult> rows) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("crTotal", statMap(col(rows, r -> r.getCrTotal())));
+        m.put("crE2e", statMap(col(rows, r -> r.getCrE2e())));
         m.put("crLossy", statMap(col(rows, r -> r.getCrLossy())));
         m.put("pedAvg", statMap(col(rows, r -> r.getPedAvg())));
         m.put("sedAvg", statMap(col(rows, r -> r.getSedAvg())));
@@ -457,20 +462,21 @@ public class EvaluationQueryService {
             out.add("当前批次暂无可用结论（无 PROPOSED 算法结果行）");
             return out;
         }
-        // 1. CR_total 最高
+        // 1. 层次三：所有方法叠加相同编码器后的全局端到端编码负载压缩率
         double best = Double.MIN_VALUE;
         String bestAlg = "";
         for (TrajectoryEvalAlgorithmResult a : algs) {
-            if (a.getCrTotalAvg() == null) continue;
-            if (a.getCrTotalAvg() > best) {
-                best = a.getCrTotalAvg();
+            if (a.getCrE2eGlobal() == null) continue;
+            if (a.getCrE2eGlobal() > best) {
+                best = a.getCrE2eGlobal();
                 bestAlg = a.getAlgorithmCode();
             }
         }
         if ("PROPOSED".equals(bestAlg)) {
-            out.add(String.format("本文方法总压缩率 CR_total=%.2f，为全部算法中最高", proposed.getCrTotalAvg()));
-        } else if (proposed.getCrTotalAvg() != null) {
-            out.add(String.format("本文方法 CR_total=%.2f（基线最高 %s=%.2f）", proposed.getCrTotalAvg(), bestAlg, best));
+            out.add(String.format("统一编码器下本文全局端到端 CR=%.2f，为全部算法中最高", proposed.getCrE2eGlobal()));
+        } else if (proposed.getCrE2eGlobal() != null) {
+            out.add(String.format("统一编码器下本文全局端到端 CR=%.2f（基线最高 %s=%.2f）",
+                    proposed.getCrE2eGlobal(), bestAlg, best));
         }
         // 2. SR 语义保真
         if (proposed.getSrAvg() != null && Math.abs(proposed.getSrAvg() - 1.0) < 1e-9) {

@@ -81,6 +81,7 @@ export function toCSV(rows: any[]): string {
 
 /** 指标单位说明表（Dashboard 图标题后缀用） */
 export const METRIC_META: Record<string, { label: string; unit: string; tooltip: string }> = {
+  crE2eGlobal: { label: '全局端到端编码负载压缩率', unit: 'x', tooltip: '清洗后完整点列规范文本总字节 / 编码负载总字节；所有方法使用相同编码器' },
   crTotalAvg: { label: '总压缩率 CR_total', unit: 'x', tooltip: '有损层压缩率 × 无损层压缩率（逐运单）' },
   crLossyAvg: { label: '有损层压缩率 CR_lossy', unit: 'x', tooltip: '清洗后点数 / 压缩后保留点数' },
   crLosslessAvg: { label: '无损层压缩率 CR_lossless', unit: 'x', tooltip: '规范文本字节 / 编码后字节' },
@@ -92,6 +93,6 @@ export const METRIC_META: Record<string, { label: string; unit: string; tooltip:
   encodeTimeMsAvg: { label: '编码耗时', unit: 'ms', tooltip: '无损编码单运单平均耗时' },
   decodeTimeMsAvg: { label: '全量解压耗时', unit: 'ms', tooltip: '全量解压单运单平均耗时' },
   queryTimeMsAvg: { label: '部分解压耗时', unit: 'ms', tooltip: '按时间窗部分解压单运单平均耗时' },
-  storageBytes: { label: '存储字节数', unit: 'B', tooltip: '本文无损层编码存储总字节' },
+  storageBytes: { label: '编码负载字节数', unit: 'B', tooltip: '各方法有损输出经相同分块编码器处理后的负载字节' },
   partialReadRatioAvg: { label: '部分读取字节比例', unit: '%', tooltip: '命中分片字节 / 全部分片字节' }
 }

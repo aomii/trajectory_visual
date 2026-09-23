@@ -11,7 +11,7 @@ import org.springframework.test.context.ActiveProfiles;
 /**
  * 第 6 章实验测试启动类（规格书 §9）。
  *
- * <p>对应论文：6.2 语义识别 / 6.3 有损层分级压缩对比 / 6.4 无损层编码 / 6.5 部分解压 /
+ * <p>对应论文：候选单元识别 / 三层压缩评估 / 无损层编码 / 部分解压 /
  * 6.6 消融 + 参数敏感性。每个实验独立 @Test（可单独复跑），总入口 {@link #runAllExperiments()}。
  *
  * <p>数据源：trajectory.source.full-data-dir（application-local.yml，当前 7709 在线库 source_data_full）；
@@ -51,10 +51,10 @@ public class TrajectoryChapter6ExperimentTest {
         log.info("批次: {}", runNo);
     }
 
-    /** 6.3 有损层分级压缩对比：本文(静止段锚点+移动DP) vs DP/DPS/TD-TR/Trajic（主实验） */
+    /** 主实验：有损层比较 + 所有方法叠加相同分块编码器后的端到端比较。 */
     @Test
     public void runLossyCompressionCompareExperiment() {
-        log.info("== 6.3 有损层分级压缩对比 ==");
+        log.info("== 多算法三层评估（统一分块编码器） ==");
         String runNo = runner.runLossyCompressionCompare();
         log.info("批次: {}", runNo);
     }

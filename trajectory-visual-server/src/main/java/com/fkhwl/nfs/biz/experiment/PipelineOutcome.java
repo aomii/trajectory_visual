@@ -37,6 +37,7 @@ public class PipelineOutcome {
     public double crLossy;       // nClean / nKept
     public double crLossless;    // naiveBytes / zippedBytes
     public double crTotal;       // crLossy × crLossless
+    public double crE2e;         // cleanInputBytes / zippedBytes（统一编码负载口径）
 
     // ---- 有损误差与语义保真 ----
     public double pedAvgM, pedMaxM, sedAvgM, sedMaxM;
@@ -46,6 +47,7 @@ public class PipelineOutcome {
 
     // ---- 无损层字节 ----
     public long naiveBytes;
+    public long cleanInputBytes;
     public long asciiBytes;
     public long zippedBytes;
 
@@ -64,7 +66,7 @@ public class PipelineOutcome {
     public double decodeMs;      // 全量解压耗时
     public double queryMs;       // 部分解压耗时
 
-    /** 有损层对比算法结果 */
+    /** 基线完整组合结果：有损输出继续进入与本文相同的分块无损编码器。 */
     public List<Baseline> baselines = new ArrayList<>();
 
     /** 该运单总原始时长秒（首末点时间差），供 6.2 统计 */
@@ -75,6 +77,17 @@ public class PipelineOutcome {
         public String name;             // DP / DPS / TD-TR / Trajic
         public int nKept;
         public double crLossy;
+        public double crLossless;
+        public double crTotal;
+        public double crE2e;
+        public long naiveBytes;
+        public long cleanInputBytes;
+        public long zippedBytes;
+        public int blocks;
+        public double encodeMs;
+        public double decodeMs;
+        public double queryMs;
+        public double partialBytesRatio;
         public double pedAvgM, pedMaxM, sedAvgM, sedMaxM;
         public double sr;               // 用与本文相同的锚点评测
         public double unitIntegrity;

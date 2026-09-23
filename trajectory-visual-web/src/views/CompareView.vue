@@ -41,7 +41,7 @@
             <el-table-column prop="algorithmCode" label="算法" width="80">
               <template #default="{ row }"><el-tag size="small" :type="row.algorithmCode === 'PROPOSED' ? 'primary' : 'info'">{{ algName(row.algorithmCode) }}</el-tag></template>
             </el-table-column>
-            <el-table-column label="CR_total"><template #default="{ row }">{{ num(row.crTotal, 2) }}</template></el-table-column>
+            <el-table-column label="端到端CR"><template #default="{ row }">{{ num(row.crE2e, 2) }}</template></el-table-column>
             <el-table-column label="CR_lossy"><template #default="{ row }">{{ num(row.crLossy, 2) }}</template></el-table-column>
             <el-table-column label="PED(m)"><template #default="{ row }">{{ num(row.pedAvg, 3) }}</template></el-table-column>
             <el-table-column label="SED(m)"><template #default="{ row }">{{ num(row.sedAvg, 3) }}</template></el-table-column>
@@ -120,7 +120,7 @@ import { fmtNum, fmtPct, METRIC_META } from '../utils/format'
 import { ElMessage } from 'element-plus'
 import TrajectoryMap from '../components/TrajectoryMap.vue'
 
-const metricKey = ref('crTotalAvg')
+const metricKey = ref('crE2eGlobal')
 const chartType = ref('bar')
 const algorithms = ref<any[]>([])
 const checkedAlgs = ref<string[]>(['PROPOSED', 'DP', 'DPS', 'TD-TR', 'Trajic'])
@@ -131,6 +131,7 @@ const allAlgs = computed(() => algorithms.value.map((a: any) => a.algorithmCode)
 function algName(c: string) { return ALG_NAMES[c] || c }
 // 限制为可在"同一运单口径"给出 mean/median/min/max 的指标（统计行来自 waybill 明细）
 const metricOptions = [
+  { key: 'crE2eGlobal', label: METRIC_META.crE2eGlobal.label, unit: METRIC_META.crE2eGlobal.unit },
   { key: 'crTotalAvg', label: METRIC_META.crTotalAvg.label, unit: METRIC_META.crTotalAvg.unit },
   { key: 'crLossyAvg', label: METRIC_META.crLossyAvg.label, unit: METRIC_META.crLossyAvg.unit },
   { key: 'pedAvg', label: METRIC_META.pedAvg.label, unit: METRIC_META.pedAvg.unit },
@@ -138,7 +139,7 @@ const metricOptions = [
   { key: 'srAvg', label: METRIC_META.srAvg.label, unit: METRIC_META.srAvg.unit },
   { key: 'queryTimeMsAvg', label: METRIC_META.queryTimeMsAvg.label, unit: METRIC_META.queryTimeMsAvg.unit }
 ]
-const statKeyMap: any = { crTotalAvg: 'crTotal', crLossyAvg: 'crLossy', pedAvg: 'pedAvg', sedAvg: 'sedAvg', srAvg: 'sr', queryTimeMsAvg: 'queryMs' }
+const statKeyMap: any = { crE2eGlobal: 'crE2e', crTotalAvg: 'crTotal', crLossyAvg: 'crLossy', pedAvg: 'pedAvg', sedAvg: 'sedAvg', srAvg: 'sr', queryTimeMsAvg: 'queryMs' }
 const statUnit = computed(() => { const u = METRIC_META[metricKey.value]?.unit; return u === '%' ? '%' : u === 'x' ? 'x' : u === 'm' ? 'm' : u === 'ms' ? 'ms' : '' })
 
 function num(v: any, d = 2) { return v == null ? '-' : fmtNum(v, d) }
@@ -172,7 +173,7 @@ async function render() {
   if (chartType.value === 'radar') {
     // 雷达图：对"越高越好"与"越低越好"指标归一化（0~100），避免量纲混用
     const dims = [
-      { name: 'CR_total', field: 'crTotalAvg', higher: 1 },
+      { name: '端到端CR', field: 'crE2eGlobal', higher: 1 },
       { name: 'CR_lossy', field: 'crLossyAvg', higher: 1 },
       { name: 'SR', field: 'srAvg', higher: 1 },
       { name: 'PED(越低优)', field: 'pedAvg', higher: -1 },

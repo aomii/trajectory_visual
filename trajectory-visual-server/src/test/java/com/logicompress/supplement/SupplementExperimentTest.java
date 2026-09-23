@@ -105,6 +105,15 @@ public class SupplementExperimentTest {
         listExported();
     }
 
+    /** 完整组合方案：所有有损方法叠加同一分块无损编码器。 */
+    @Test
+    public void runEndToEndBenchmark() throws Exception {
+        List<SupplementContext.WaybillCtx> ctxs =
+                SupplementContext.load(buildConfig(), sourceDir(), loadMeta(), limit());
+        EndToEndBenchmark.run(buildConfig(), ctxs, OUT_DIR);
+        listExported();
+    }
+
     /** 只跑表 6-14（偏移量经验熵） */
     @Test
     public void runEntropyBenchmark() throws Exception {

@@ -72,6 +72,8 @@ public final class CompressionPipeline {
         r.removedDrift = cleaned.removedDrift;
         if (cleaned.points.size() < cfg.minPoints) return null; // 无效轨迹
         r.cleanedPoints = cleaned.points;
+        // 层次三统一输入：清洗后完整点列的规范文本字节。
+        r.cleanInputBytes = Metrics.naiveAsciiBytes(cleaned.points, cfg.precision);
 
         // ② 语义识别（v2 静态同坐标停留，REST≥30min / TRAFFIC）
         SemanticResult semantic = new SemanticAnalyzer().analyze(w, cleaned, cfg);
@@ -110,6 +112,7 @@ public final class CompressionPipeline {
             r.blocks = store.blocks.size();
             r.crLossless = (double) r.naiveBytes / r.zippedBytes;
             r.crTotal = r.crLossy * r.crLossless;
+            r.crE2e = (double) r.cleanInputBytes / r.zippedBytes;
 
             // ⑥ 全量解压计时（decode_ms）
             t0 = System.nanoTime();
@@ -145,7 +148,7 @@ public final class CompressionPipeline {
         }
 
         if (baselines) {
-            // ⑧ 有损基线：同一清洗轨迹、同一容差 cfg.baselineDpM；用本文锚点集合评 SR/单元完整率
+            // ⑧ 完整组合基线：同一清洗轨迹、同一容差，并叠加与本文完全相同的分块编码器。
             LossyBaseline[] b = {new PlainDp(), new Dps(), new TdTr(), new Trajic()};
             for (int i = 0; i < b.length; i++) {
                 List<Integer> bKept = b[i].compress(cleaned, cfg.baselineDpM);
@@ -163,6 +166,39 @@ public final class CompressionPipeline {
                 boolean[] bMask = Metrics.indexMask(bKept, cleaned.points.size());
                 bm.unitIntegrity = Metrics.unitIntegrity(semantic.stops, bMask);
                 bm.dwellFidelity = Metrics.dwellFidelity(cleaned.points, semantic.stops, bMask);
+                List<TrackPoint> bKeptPts = new ArrayList<>(bKept.size());
+                for (int idx : bKept) bKeptPts.add(cleaned.points.get(idx));
+                bm.naiveBytes = Metrics.naiveAsciiBytes(bKeptPts, cfg.precision);
+                bm.cleanInputBytes = r.cleanInputBytes;
+                long bt0 = System.nanoTime();
+                EncodedStore bStore = new BlockEncoder().encode(cleaned.points, bKept, semantic.anchors, cfg);
+                bm.encodeMs = (System.nanoTime() - bt0) / 1e6;
+                bm.zippedBytes = bStore.totalZippedBytes();
+                bm.blocks = bStore.blocks.size();
+                bm.crLossless = (double) bm.naiveBytes / bm.zippedBytes;
+                bm.crTotal = bm.crLossy * bm.crLossless;
+                bm.crE2e = (double) bm.cleanInputBytes / bm.zippedBytes;
+
+                bt0 = System.nanoTime();
+                List<TrackPoint> bAll = PartialDecoder.decodeAll(bStore, cfg.precision);
+                bm.decodeMs = (System.nanoTime() - bt0) / 1e6;
+                if (partial) {
+                    long first = cleaned.points.get(0).gtmEpoch;
+                    long last = cleaned.points.get(cleaned.points.size() - 1).gtmEpoch;
+                    long q1 = first + Math.round((last - first) * cfg.queryWindowFraction);
+                    long q2 = q1 + cfg.queryWindowS;
+                    bt0 = System.nanoTime();
+                    PartialDecoder.WindowResult bwr = new PartialDecoder().decodeWindow(bStore, q1, q2, cfg.precision);
+                    bm.queryMs = (System.nanoTime() - bt0) / 1e6;
+                    bm.partialBytesRatio = (double) bwr.bytesRead / bm.zippedBytes;
+                    int fullCount = 0;
+                    for (TrackPoint p : bAll) {
+                        if (p.gtmEpoch >= q1 && p.gtmEpoch <= q2) fullCount++;
+                    }
+                    if (bwr.points.size() != fullCount) {
+                        throw new IllegalStateException("基线部分解压不一致: " + bm.name + ", " + w.waybillNo);
+                    }
+                }
                 r.baselines.add(bm);
             }
         }
