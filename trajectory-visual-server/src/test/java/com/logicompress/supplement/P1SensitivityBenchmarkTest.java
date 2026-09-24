@@ -3,6 +3,7 @@ package com.logicompress.supplement;
 import com.logicompress.experiment.config.ExperimentConfig;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -11,7 +12,7 @@ import java.util.List;
 public class P1SensitivityBenchmarkTest {
     @Test
     public void runFullData() throws Exception {
-        Path source = Paths.get(System.getProperty("p1.sourceDir", "../00数据处理-260909/source_data_full"));
+        Path source = Paths.get(System.getProperty("p1.sourceDir", "../../00数据处理-260909/source_data_full"));
         Path output = Paths.get(System.getProperty("p1.outDir", "src/main/resources/export/supplement"));
         int limit = Integer.getInteger("p1.limit", 0);
         ExperimentConfig cfg = new ExperimentConfig();
@@ -20,6 +21,11 @@ public class P1SensitivityBenchmarkTest {
         cfg.driftSpeedKph = 120; cfg.breakGapS = 600;
         List<SupplementContext.WaybillCtx> ctxs = SupplementContext.load(
                 cfg, source, SupplementContext.emptyMeta(), limit);
+        if (!Files.isDirectory(source) || ctxs.isEmpty()) {
+            throw new IllegalStateException("未加载到有效运单，sourceDir=" + source.toAbsolutePath()
+                    + "。请检查目录，或在 IDEA VM options 中设置 -Dp1.sourceDir=<source_data_full绝对路径>。");
+        }
+        System.out.println("[p1] 已加载有效运单 " + ctxs.size() + " 条，源目录=" + source.toAbsolutePath());
         P1SensitivityBenchmark.run(cfg, ctxs, output);
     }
 }
