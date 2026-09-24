@@ -25,7 +25,7 @@
 |---|---|---|
 | `spring.datasource.*` | 127.0.0.1:3306/ml_network_freight root/root | MySQL |
 | `spring.data.mongodb.uri` | mongodb://127.0.0.1:27017/ml_network_freight | Mongo（只存压缩 chunk） |
-| `trajectory.source.full-data-dir` | `D:/aoming/电科/毕业论文 - claude/00数据处理-260909/source_data_full` | 全量轨迹源目录（**实际目录名 source_data_full**，规格书笔误 `source\_data\_full`） |
+| `trajectory.source.full-data-dir` | `.../trajectory-visual-server/source_data_full` | 全量轨迹源目录；本地数据目录已被 Git 忽略 |
 | `trajectory.source.file-pattern` | `track_*.json` | 文件命名 |
 | `trajectory.source.max-files-per-job` | -1（全部 7709） | 导入/全量压缩单次上限；演示可给 300 |
 | `trajectory.export.dashboard-dir / csv-dir` | `05可视化系统/exports/...` | 导出目录（前端 PNG/CSV 由浏览器下载，本配置供后端预留） |
@@ -45,7 +45,7 @@ mysql -uroot -proot -h127.0.0.1 --default-character-set=utf8mb4 < sql/init.sql
 
 建表：`trajectory_waybill` + 六张 `trajectory_eval_*` 结果表（规格书 §8）。`ml_network_freight` 中已有的老业务表（waybill 等）不动；系统按 waybill_id 从老 `waybill` 表回填车牌、货物、收发货地点/坐标（`send_addr_lal`/`receive_addr_lal`）与装货/卸货/接单时间（源 JSON 文件无这些字段）。
 
-> 老库已有 `trajectory_waybill` 时执行增量脚本 `sql/upgrade_20260910_waybill_meta.sql` 补列，并**重跑一次导入**才会回填历史运单的收发货元数据。
+> 上述命令和下列 SQL 路径均以 `trajectory-visual-server` 为当前工作目录。老库已有 `trajectory_waybill` 时执行增量脚本 `sql/upgrade_20260910_waybill_meta.sql` 补列，并**重跑一次导入**才会回填历史运单的收发货元数据。
 > 2026-09-23 以前建立的实验结果表还需执行 `sql/upgrade_20260923_e2e_baseline.sql`，新增统一编码器端到端指标列；执行后重跑主实验生成新批次，旧批次保持不变。
 
 ## 4. 启动

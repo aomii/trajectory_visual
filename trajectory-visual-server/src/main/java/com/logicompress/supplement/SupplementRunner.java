@@ -23,6 +23,7 @@ import java.util.Map;
  *   <li>表 6-16 块长权衡曲线 → {@link BlockLengthSweep}</li>
  *   <li>表 6-18 凸包保形度与压缩失真速度比 → {@link HullShapeBenchmark}</li>
  *   <li>完整组合方案统一编码对比 → {@link EndToEndBenchmark}</li>
+ *   <li>P1 候选停留单元参数敏感性 → {@link P1SensitivityBenchmark}</li>
  * </ul>
  * （表 6-19「方案 A vs 方案 B」已按用户 2026-09-11 决定从论文中取消，故本包不实现。）
  */
@@ -66,6 +67,7 @@ public final class SupplementRunner {
         LosslessBenchmark.runSize(cfg, ctxs, outDir);
         LosslessBenchmark.runBench(cfg, ctxs, outDir);
         EndToEndBenchmark.run(cfg, ctxs, outDir);
+        P1SensitivityBenchmark.run(cfg, ctxs, outDir);
         EntropyBenchmark.run(cfg, ctxs, outDir);
         BlockLengthSweep.run(cfg, ctxs, outDir);
         HullShapeBenchmark.run(cfg, ctxs, outDir);

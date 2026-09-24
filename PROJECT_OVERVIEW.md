@@ -9,19 +9,19 @@
 05可视化系统/
 ├─ trajectory-visual-server/   后端（Spring Boot 2.7 / MyBatis-Plus / Spring Data MongoDB / JDK8 语法）
 │   ├─ README.md
+│   ├─ sql/                    MySQL 建表与升级脚本
+│   ├─ docs/                   接口说明与自检清单
+│   ├─ source_data_full/       本地原始轨迹（Git 忽略）
 │   └─ src/main/java/com/fkhwl/nfs|com/logicompress/experiment(算法移植)
 ├─ trajectory-visual-web/      前端（Vue3 + Vite + Element Plus + ECharts + 高德地图）
 │   └─ README.md
-├─ sql/init.sql                MySQL 建表（运单元数据 + 6 张第 6 章实验结果表）
-├─ docs/接口说明文档.md         接口清单
-├─ docs/自检清单.md             对照规格书 §19 的自检结果
 ├─ exports/dashboard|csv        导出默认目录
 └─ 给claudecode的可视化系统实现说明.md（规格书）
 ```
 
 ## 架构与数据边界
 
-- 原始轨迹 = 本地源文件（`trajectory.source.full-data-dir`，当前 source_data_full，7709 运单），坐标 **GCJ-02**。
+- 原始轨迹 = 后端项目内的本地源文件 `trajectory-visual-server/source_data_full`（配置项 `trajectory.source.full-data-dir`，当前 5224 运单，Git 忽略），坐标 **GCJ-02**。
 - MySQL `ml_network_freight`：运单元数据（含从业务库 `waybill` 表回填的车牌、货物、收发货地点/坐标、装卸货时间）+ 第 6 章实验结果表。
 - MongoDB：只存压缩分片 `trajectory_chunk`（TrajectoryChunkDoc），不存原始轨迹点数组；chunk0 额外挂停留语义元数据与**压缩指标快照**。
 - 坐标一律 GCJ-02：源数据本身即 GCJ-02，展示层**不做二次转换**（开关 `trajectory.coord.source-already-gcj02`，默认 true）；压缩/指标计算不依赖坐标基准，与 04实验 口径一致。
@@ -30,7 +30,7 @@
 
 1. **坐标系**：源 JSON 已是 GCJ-02，去掉展示层的 WGS84→GCJ-02 二次转换（原会整体偏移约 300~600m）。
 2. **运单收发元数据**：`trajectory_waybill` 补 14 列（货名 / 收发地点名称·区划·详址 / 收发经纬度 / 装货·卸货·接单时间），
-   导入时按 waybillId 从业务库 `waybill` 表回填；工作台新增"运单收发货信息"卡片。**老库需跑 `sql/upgrade_20260910_waybill_meta.sql` 并重跑导入。**
+   导入时按 waybillId 从业务库 `waybill` 表回填；工作台新增"运单收发货信息"卡片。**老库需在后端目录运行 `sql/upgrade_20260910_waybill_meta.sql` 并重跑导入。**
 3. **地图可读性**：原始线=**蓝色**实线（画得更宽、压在底层），压缩线=**绿色**实线（窄、压在上层）→
    重合段呈"蓝边绿芯"，DP 抄近道处蓝色绕弯、绿色走直线，两条曲线的差异一眼可见；
    沿线绘制方向箭头（自绘 SVG，按里程均匀布点），起/终点用"起/终"白底徽标标注；
@@ -86,7 +86,7 @@
 
 ## 运行速览
 
-1. `mysql ... < sql/init.sql`（全新库）；**已有库**依次执行 `sql/upgrade_20260910_waybill_meta.sql` 与 `sql/upgrade_20260923_e2e_baseline.sql`
+1. 在 `trajectory-visual-server` 目录执行 `mysql ... < sql/init.sql`（全新库）；**已有库**依次执行 `sql/upgrade_20260910_waybill_meta.sql` 与 `sql/upgrade_20260923_e2e_baseline.sql`
 2. 启动后端 `mvn -s D:\develop\apache-maven-3.8.2\conf\settings-tuling.xml spring-boot:run -Dspring-boot.run.profiles=local`
 3. `curl -X POST "http://127.0.0.1:8080/api/visual/waybill/admin/import-waybills?limit=300"`（重跑一次以回填历史运单的车牌/货物/收发时间地点）
 4. 运行第 6 章测试类（建议先 `-Dtrajectory.experiment.waybill-limit=50`）

@@ -28,16 +28,16 @@ trajectory:
 
   # 全量轨迹源目录（原始轨迹只从这里读；坐标 GCJ-02）。不硬编码于代码，由本配置注入。
   source:
-    # 规格书原路径写为 .../00数据处理-260909/source/_data_full，实际目录名 source_data_full
-    full-data-dir: D:/aoming/电科/毕业论文 - claude/00数据处理-260909/source_data_full
+    # 后端项目内的本地原始数据目录；source_data_full/ 已被 Git 忽略，不会提交到仓库。
+    full-data-dir: D:/aoming/电科/毕业论文260828-开题-codex/05可视化系统/trajectory-visual-server/source_data_full
     # 文件名模式：track_{运单号}_{waybillId}.json
     file-pattern: "track_*.json"
     # 元数据导入/全量压缩单次扫描的文件上限：-1=全部(7709 个，全量长跑用)；本地演示建议给个上限(如 300)
     max-files-per-job: -1
   # 导出目录（Dashboard PNG / 指标 CSV），业务代码只读此配置，不硬编码
   export:
-    dashboard-dir: D:/aoming/电科/毕业论文 - claude/05可视化系统/exports/dashboard
-    csv-dir: D:/aoming/电科/毕业论文 - claude/05可视化系统/exports/csv
+    dashboard-dir: D:/aoming/电科/毕业论文260828-开题-codex/05可视化系统/trajectory-visual-server/exports/dashboard
+    csv-dir: D:/aoming/电科/毕业论文260828-开题-codex/05可视化系统/trajectory-visual-server/exports/csv
   # 压缩任务线程池
   job:
     pool-size: 1

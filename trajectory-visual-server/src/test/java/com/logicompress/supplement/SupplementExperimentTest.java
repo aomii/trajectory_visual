@@ -36,6 +36,7 @@ import java.util.Map;
  *   table6_14_entropy_summary        → 表 6-14 偏移量经验熵 vs 编码后字节率
  *   table6_16_block_tradeoff         → 表 6-16 块长权衡
  *   table6_18_hull_summary           → 表 6-18 凸包保形度与压缩失真速度比
+ *   table6_p1_*                       → P1 候选停留单元参数敏感性
  * </pre>
  * （表 6-19 方案 A/B 已按用户 2026-09-11 决定取消，不再产出。）
  *
@@ -117,6 +118,25 @@ public class SupplementExperimentTest {
         List<SupplementContext.WaybillCtx> ctxs =
                 SupplementContext.load(buildConfig(), sourceDir(), loadMeta(), limit());
         EndToEndBenchmark.run(buildConfig(), ctxs, OUT_DIR);
+        listExported();
+    }
+
+    /**
+     * P1 候选停留单元参数敏感性：扫描 ε_same、d_min、断线续接上限、T_long 与 ST-DBSCAN 参数。
+     *
+     * <p>该实验不读取数据库表；源目录、参数和导出目录与本类其他补充实验共用同一套配置。
+     */
+    @Test
+    public void runP1SensitivityBenchmark() throws Exception {
+        Path source = sourceDir();
+        List<SupplementContext.WaybillCtx> ctxs =
+                SupplementContext.load(buildConfig(), source, SupplementContext.emptyMeta(), limit());
+        if (!Files.isDirectory(source) || ctxs.isEmpty()) {
+            throw new IllegalStateException("未加载到有效运单，sourceDir=" + source.toAbsolutePath()
+                    + "。请检查 application-local.yml 中 trajectory.source.full-data-dir 的配置。");
+        }
+        log.info("P1 参数敏感性：已加载有效运单 {} 条，源目录={}", ctxs.size(), source.toAbsolutePath());
+        P1SensitivityBenchmark.run(buildConfig(), ctxs, OUT_DIR);
         listExported();
     }
 

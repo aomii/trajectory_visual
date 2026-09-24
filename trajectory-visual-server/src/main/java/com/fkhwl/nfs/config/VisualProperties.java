@@ -20,7 +20,7 @@ public class VisualProperties {
 
     /** 全量轨迹源（原始轨迹文件，GCJ-02） */
     public static class Source {
-        /** 全量轨迹源目录，例如 D:/.../00数据处理-260909/source_data_full */
+        /** 全量轨迹源目录，例如 D:/.../trajectory-visual-server/source_data_full */
         private String fullDataDir;
         /** 文件名模式：track_{运单号}_{waybillId}.json */
         private String filePattern = "track_*.json";
