@@ -105,7 +105,13 @@ public class SupplementExperimentTest {
         listExported();
     }
 
-    /** 完整组合方案：所有有损方法叠加同一分块无损编码器。 */
+    /**
+     * 完整组合方案：所有有损方法叠加同一分块无损编码器。
+     *
+     * <p>端到端实验唯一入口。参数与源目录统一来自 {@code application-local.yml} 的
+     * {@code trajectory.experiment.*}、{@code trajectory.source.full-data-dir}，避免出现
+     * 单独测试类使用另一套硬编码配置而导致论文表与系统页面口径不一致。
+     */
     @Test
     public void runEndToEndBenchmark() throws Exception {
         List<SupplementContext.WaybillCtx> ctxs =

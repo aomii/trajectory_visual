@@ -62,8 +62,8 @@
   最终源目录 **5224 个运单**（约 437 万点）。
 - **分片时长**：`trajectory.experiment.block-window-s` 由 600 改为 **3600**（Mongo 库里 1 小时一片）。
 - **已清空**：MySQL 7 张 `trajectory_*` 表 + Mongo `trajectory_chunk`。
-- **全量实验入口**：`Chapter6FullExperimentTest`（新，手动跑；强制 `waybill-limit=-1`，不受 yml 试跑上限影响，
-  每 200 个运单打印一次进度，全量约 45–70 分钟）。
+- **全量实验入口**：`TrajectoryChapter6ExperimentTest` 是唯一入口；默认 `waybill-limit=-1`，
+  以 `-Dtrajectory.experiment.waybill-limit=50` 可切换为子集试跑。
 - MyBatis SQL 打印已默认关闭（`application.yml` 的 `log-impl`），否则每条 INSERT 会刷爆控制台。
 
 ## 关键口径（2026-09-09 用户定稿，覆盖论文现稿）
