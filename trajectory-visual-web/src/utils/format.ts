@@ -89,7 +89,7 @@ export const METRIC_META: Record<string, { label: string; unit: string; tooltip:
   sedAvg: { label: '平均同步误差 SED', unit: 'm', tooltip: '原始点到按时间插值同步点的平均距离（逐运单均值）' },
   srAvg: { label: '语义点保留率 SR', unit: '%', tooltip: '压缩后保留的关键锚点数 / 锚点总数' },
   semanticUnitCompleteRate: { label: '语义单元完整率', unit: '%', tooltip: '起终锚点成对保留的停留单元占比' },
-  stayDurationPreserveRate: { label: '停留时长保真度', unit: '%', tooltip: '由成对锚点可恢复的停留时长 / 原始时长' },
+  stayDurationPreserveRate: { label: '候选跨度指标（随批次版本）', unit: '%', tooltip: '新批次为边界成对保留的全局跨度加权率；历史批次为候选内保留点跨度比例的宏均值，请查看批次版本' },
   encodeTimeMsAvg: { label: '编码耗时', unit: 'ms', tooltip: '无损编码单运单平均耗时' },
   decodeTimeMsAvg: { label: '全量解压耗时', unit: 'ms', tooltip: '全量解压单运单平均耗时' },
   queryTimeMsAvg: { label: '部分解压耗时', unit: 'ms', tooltip: '按时间窗部分解压单运单平均耗时' },

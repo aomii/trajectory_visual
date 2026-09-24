@@ -343,7 +343,7 @@ const metricItems = computed<any[]>(() => {
     { label: '同步欧氏距离 SED 均值', value: n2(m?.sedAvgM), unit: 'm' },
     { label: '语义点保留率 SR', value: pct(m?.sr) },
     { label: '语义单元完整率', value: pct(m?.unitIntegrity), hint: '起终锚点成对保留' },
-    { label: '停留时长保真度', value: pct(m?.dwellFidelity) },
+    { label: '候选内保留点跨度均值（旧口径）', value: pct(m?.dwellFidelity) },
     { label: '编码耗时', value: n2(m?.encodeMs), unit: 'ms' },
     { label: '全量解压耗时', value: n2(m?.decodeMs), unit: 'ms' },
     { label: '移动段 DP 容差', value: n2(m?.moveToleranceM), unit: 'm' },

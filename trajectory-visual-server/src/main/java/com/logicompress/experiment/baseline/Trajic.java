@@ -8,9 +8,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Trajic（预测编码 + SED 误差界）：用最近两个已发点做线性外推预测当前位置，
- * 预测误差（同步欧氏距离）在 tol 内则缓冲不发点，超界则发修正点重置预测器。
- * 被跳过的点满足 SED ≤ tol（误差有界），属离线可用的批次压缩基线。
+ * 线性预测抽稀启发式。Trajic 是历史代码标识；本类只输出保留点下标，
+ * 并未实现原 Trajic 论文的预测残差编码系统。
+ * 每次判断比较当前点和最近两个已发点的外推预测误差；该局部误差与最终
+ * 保留折线的时间同步 SED 不同，tolM 不是最终折线 SED 的上界。
  */
 public class Trajic implements LossyBaseline {
 
@@ -38,7 +39,7 @@ public class Trajic implements LossyBaseline {
                 double[] actual = GeoUtil.project(pts.get(j).lat, pts.get(j).lon, refLat, refLon);
                 double sed = Math.hypot(actual[0] - px, actual[1] - py);
                 if (sed <= tolM) {
-                    continue; // 误差有界，缓冲
+                    continue; // 当前外推预测误差未超阈值；不保证最终折线 SED
                 }
                 out.add(j); // 修正点
                 p0 = p1;

@@ -62,9 +62,9 @@ public class Chapter6ExperimentRunner {
     static {
         ALG_NAMES.put("PROPOSED", "本文方法");
         ALG_NAMES.put("DP", "道格拉斯-普克(DP)");
-        ALG_NAMES.put("DPS", "方向保持(DPS)");
+        ALG_NAMES.put("DPS", "DP＋转角回插启发式(DPS代码)");
         ALG_NAMES.put("TD-TR", "时间同步(TD-TR)");
-        ALG_NAMES.put("Trajic", "Trajic");
+        ALG_NAMES.put("Trajic", "线性预测抽稀(Trajic代码)");
     }
 
     private final TrajectoryEvalRunMapper runMapper;
@@ -105,7 +105,10 @@ public class Chapter6ExperimentRunner {
         r.setDataSourceDir(vprops.getSource().getFullDataDir());
         r.setStatus("RUNNING");
         r.setStartedAt(LocalDateTime.now());
-        r.setParameterJson(ExperimentConfigs.parameterJson(props));
+        Map<String, String> metricParameters = new LinkedHashMap<>(ExperimentConfigs.from(props).asMap());
+        metricParameters.put("metricVersion", "boundary-span-v2");
+        metricParameters.put("stayDurationPreserveRate", "sumCompleteBoundarySeconds/sumEligibleSeconds");
+        r.setParameterJson(ExperimentConfigs.toJson(metricParameters));
         LocalDateTime now = LocalDateTime.now();
         r.setCreateTime(now);
         r.setUpdateTime(now);
@@ -327,8 +330,8 @@ public class Chapter6ExperimentRunner {
         row.setSedAvg(o.sedAvgM);
         row.setSedMax(o.sedMaxM);
         row.setSr(o.sr);
-        row.setSemanticUnitCompleteRate(o.unitIntegrity);
-        row.setStayDurationPreserveRate(o.dwellFidelity);
+        row.setSemanticUnitCompleteRate(o.nStops == 0 ? null : o.unitIntegrity);
+        row.setStayDurationPreserveRate(o.boundarySpanRetention);
         row.setEncodeTimeMs(o.store == null ? null : (double) o.encodeMs);
         row.setDecodeTimeMs(o.store == null ? null : (double) o.decodeMs);
         row.setStorageBytes(o.store == null ? null : o.zippedBytes);
@@ -360,8 +363,8 @@ public class Chapter6ExperimentRunner {
         row.setSedAvg(b.sedAvgM);
         row.setSedMax(b.sedMaxM);
         row.setSr(b.sr);
-        row.setSemanticUnitCompleteRate(b.unitIntegrity);
-        row.setStayDurationPreserveRate(b.dwellFidelity);
+        row.setSemanticUnitCompleteRate(o.nStops == 0 ? null : b.unitIntegrity);
+        row.setStayDurationPreserveRate(b.boundarySpanRetention);
         row.setEncodeTimeMs(b.encodeMs);
         row.setDecodeTimeMs(b.decodeMs);
         row.setStorageBytes(b.zippedBytes);
@@ -389,14 +392,14 @@ public class Chapter6ExperimentRunner {
         a.setPedAvg(avg(os, o -> o.pedAvgM));
         a.setSedAvg(avg(os, o -> o.sedAvgM));
         a.setSrAvg(avg(os, o -> o.sr));
-        a.setSemanticUnitCompleteRate(avg(os, o -> o.unitIntegrity));
-        a.setStayDurationPreserveRate(avg(os, o -> o.dwellFidelity));
+        a.setSemanticUnitCompleteRate(unitRate(os));
+        a.setStayDurationPreserveRate(spanRate(os));
         a.setEncodeTimeMsAvg(avg(os, o -> o.encodeMs));
         a.setDecodeTimeMsAvg(avg(os, o -> o.decodeMs));
         a.setStorageBytes(os.stream().mapToLong(o -> o.zippedBytes).sum());
         a.setQueryTimeMsAvg(avg(os, o -> o.queryMs));
         a.setPartialReadRatioAvg(avg(os, o -> o.partialBytesRatio));
-        a.setParameterJson(ExperimentConfigs.parameterJson(props));
+        a.setParameterJson(resultMetricParameters(os));
         a.setCreateTime(LocalDateTime.now());
         return a;
     }
@@ -426,14 +429,14 @@ public class Chapter6ExperimentRunner {
         a.setPedAvg(avgB(bs, b -> b.pedAvgM));
         a.setSedAvg(avgB(bs, b -> b.sedAvgM));
         a.setSrAvg(avgB(bs, b -> b.sr));
-        a.setSemanticUnitCompleteRate(avgB(bs, b -> b.unitIntegrity));
-        a.setStayDurationPreserveRate(avgB(bs, b -> b.dwellFidelity));
+        a.setSemanticUnitCompleteRate(unitRateBaselines(bs));
+        a.setStayDurationPreserveRate(spanRateBaselines(bs));
         a.setEncodeTimeMsAvg(avgB(bs, b -> b.encodeMs));
         a.setDecodeTimeMsAvg(avgB(bs, b -> b.decodeMs));
         a.setStorageBytes(payloadBytes);
         a.setQueryTimeMsAvg(avgB(bs, b -> b.queryMs));
         a.setPartialReadRatioAvg(avgB(bs, b -> b.partialBytesRatio));
-        a.setParameterJson(ExperimentConfigs.parameterJson(props));
+        a.setParameterJson(resultMetricParameters(os));
         a.setCreateTime(LocalDateTime.now());
         return a;
     }
@@ -647,8 +650,8 @@ public class Chapter6ExperimentRunner {
         a.setCrTotalAvg(avg(os, o -> o.crTotal));
         a.setCrLossyAvg(avg(os, o -> o.crLossy));
         a.setSrAvg(avg(os, o -> o.sr));
-        a.setSemanticUnitCompleteRate(avg(os, o -> o.unitIntegrity));
-        a.setStayDurationPreserveRate(avg(os, o -> o.dwellFidelity));
+        a.setSemanticUnitCompleteRate(unitRate(os));
+        a.setStayDurationPreserveRate(spanRate(os));
         a.setPedAvg(avg(os, o -> o.pedAvgM));
         a.setSedAvg(avg(os, o -> o.sedAvgM));
         a.setQueryTimeMsAvg(avg(os, o -> o.queryMs));
@@ -789,6 +792,42 @@ public class Chapter6ExperimentRunner {
         double s = 0;
         for (PipelineOutcome o : os) s += f.applyAsDouble(o);
         return com.fkhwl.nfs.biz.experiment.Stats.round4(s / os.size());
+    }
+
+    private Double spanRate(List<PipelineOutcome> outcomes) {
+        double eligible = outcomes.stream().mapToDouble(o -> o.spanEligibleSeconds).sum();
+        if (eligible == 0) return null;
+        double complete = outcomes.stream().mapToDouble(o -> o.spanCompleteSeconds).sum();
+        return com.fkhwl.nfs.biz.experiment.Stats.round4(complete / eligible);
+    }
+
+    private Double unitRate(List<PipelineOutcome> outcomes) {
+        return outcomes.stream().filter(o -> o.nStops > 0).mapToDouble(o -> o.unitIntegrity)
+                .average().stream().map(v -> com.fkhwl.nfs.biz.experiment.Stats.round4(v))
+                .boxed().findFirst().orElse(null);
+    }
+
+    private String resultMetricParameters(List<PipelineOutcome> outcomes) {
+        Map<String, Object> parameters = new LinkedHashMap<>(ExperimentConfigs.from(props).asMap());
+        parameters.put("metricVersion", "boundary-span-v2");
+        parameters.put("eligibleCandidateWaybills", outcomes.stream().filter(o -> o.spanEligibleSeconds > 0).count());
+        parameters.put("eligibleCandidateSpanSeconds", outcomes.stream().mapToDouble(o -> o.spanEligibleSeconds).sum());
+        parameters.put("unitIntegrityAggregation", "mean over eligible candidate waybills");
+        parameters.put("spanAggregation", "sum complete seconds / sum eligible seconds");
+        return ExperimentConfigs.toJson(parameters);
+    }
+
+    private Double unitRateBaselines(List<PipelineOutcome.Baseline> baselines) {
+        return baselines.stream().filter(b -> b.spanEligibleSeconds > 0).mapToDouble(b -> b.unitIntegrity)
+                .average().stream().map(v -> com.fkhwl.nfs.biz.experiment.Stats.round4(v))
+                .boxed().findFirst().orElse(null);
+    }
+
+    private Double spanRateBaselines(List<PipelineOutcome.Baseline> baselines) {
+        double eligible = baselines.stream().mapToDouble(b -> b.spanEligibleSeconds).sum();
+        if (eligible == 0) return null;
+        double complete = baselines.stream().mapToDouble(b -> b.spanCompleteSeconds).sum();
+        return com.fkhwl.nfs.biz.experiment.Stats.round4(complete / eligible);
     }
 
     private double avgB(List<PipelineOutcome.Baseline> bs, java.util.function.ToDoubleFunction<PipelineOutcome.Baseline> f) {

@@ -55,14 +55,17 @@ public class BlockOffsetCodec {
         while (i < n) {
             long[] point = new long[FIELD_COUNT];
             for (int f = 0; f < FIELD_COUNT; f++) {
-                long b = 0x20, res = 0, shift = 0, comp = 0;
-                while (b >= 0x20 && i < n) {
-                    b = ascii.charAt(i) - 63;
-                    i++;
+                long b, res = 0, shift = 0, comp;
+                do {
+                    if (i >= n) throw new IllegalArgumentException("Truncated point or variable-length field");
+                    b = ascii.charAt(i++) - 63;
+                    if (b < 0 || b > 0x3f || shift > 60) {
+                        throw new IllegalArgumentException("Invalid encoded trajectory field");
+                    }
                     res |= (b & 0x1f) << shift;
                     shift += 5;
-                    comp = res & 1;
-                }
+                } while (b >= 0x20);
+                comp = res & 1;
                 res >>= 1;
                 if (comp == 1) res = ~res;
                 vals[f] += res;

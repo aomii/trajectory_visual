@@ -198,6 +198,9 @@ public class EvaluationQueryService {
         runM.put("durationMs", run.getDurationMs());
         runM.put("dataSourceDir", run.getDataSourceDir());
         runM.put("remark", run.getRemark());
+        runM.put("metricVersion", run.getParameterJson() != null
+                && run.getParameterJson().contains("boundary-span-v2")
+                ? "boundary-span-v2" : "legacy-dwell-v1");
         root.put("run", runM);
 
         // ---- kpi（本文 PROPOSED 聚合行）----

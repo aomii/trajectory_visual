@@ -97,6 +97,10 @@ public final class CompressionPipeline {
         boolean[] keptMask = Metrics.indexMask(kept, cleaned.points.size());
         r.unitIntegrity = Metrics.unitIntegrity(semantic.stops, keptMask);
         r.dwellFidelity = Metrics.dwellFidelity(cleaned.points, semantic.stops, keptMask);
+        Metrics.BoundarySpan span = Metrics.boundarySpanRetention(semantic.stops, keptMask);
+        r.boundarySpanRetention = span.rate();
+        r.spanCompleteSeconds = span.completeSeconds;
+        r.spanEligibleSeconds = span.eligibleSeconds;
 
         if (lossless) {
             // ⑤ 无损层：对象是"保留点序列"；分块 → 块首绝对坐标/块内差分 → ZigZag → 5位变长 → DEFLATE
@@ -166,6 +170,10 @@ public final class CompressionPipeline {
                 boolean[] bMask = Metrics.indexMask(bKept, cleaned.points.size());
                 bm.unitIntegrity = Metrics.unitIntegrity(semantic.stops, bMask);
                 bm.dwellFidelity = Metrics.dwellFidelity(cleaned.points, semantic.stops, bMask);
+                Metrics.BoundarySpan bSpan = Metrics.boundarySpanRetention(semantic.stops, bMask);
+                bm.boundarySpanRetention = bSpan.rate();
+                bm.spanCompleteSeconds = bSpan.completeSeconds;
+                bm.spanEligibleSeconds = bSpan.eligibleSeconds;
                 List<TrackPoint> bKeptPts = new ArrayList<>(bKept.size());
                 for (int idx : bKept) bKeptPts.add(cleaned.points.get(idx));
                 bm.naiveBytes = Metrics.naiveAsciiBytes(bKeptPts, cfg.precision);

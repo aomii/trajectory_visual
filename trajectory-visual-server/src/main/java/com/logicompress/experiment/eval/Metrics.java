@@ -178,7 +178,38 @@ public final class Metrics {
     }
 
     /**
-     * 停留时长保真度（claude_08 指标③）：逐单元"保留点可恢复时长 / 原始时长"的均值（0~1）。
+     * 候选边界观测跨度保持率的可加总分子、分母。只统计正跨度候选；
+     * 无有效候选时 rate 为 null（不适用），不得计为 100%。
+     * 这是压缩前候选结构的内部保持指标，不是停车识别准确率。
+     */
+    public static class BoundarySpan {
+        public double completeSeconds;
+        public double eligibleSeconds;
+        public int eligibleUnits;
+
+        public Double rate() {
+            return eligibleSeconds == 0 ? null : completeSeconds / eligibleSeconds;
+        }
+    }
+
+    public static BoundarySpan boundarySpanRetention(List<StopUnit> stops, boolean[] keptMask) {
+        BoundarySpan result = new BoundarySpan();
+        if (stops == null || keptMask == null) return result;
+        for (StopUnit u : stops) {
+            double duration = u.durationS();
+            if (duration <= 0) continue;
+            result.eligibleSeconds += duration;
+            result.eligibleUnits++;
+            boolean startKept = u.startIdx >= 0 && u.startIdx < keptMask.length && keptMask[u.startIdx];
+            boolean endKept = u.endIdx >= 0 && u.endIdx < keptMask.length && keptMask[u.endIdx];
+            if (startKept && endKept) result.completeSeconds += duration;
+        }
+        return result;
+    }
+
+    /**
+     * 旧版“单元内保留点跨度比例宏均值”，与 boundarySpanRetention 不同；
+     * 旧实验批次的 dwell_fidelity 列须保留旧名，不能当作边界跨度保持率。
      * 单元内保留点时间跨度（首/末保留点 gtm 差）相对原始停留时长；单元内无保留点计 0；
      * <b>对所有单元求均值</b>（含不完整单元，避免只看完整单元掩盖失效）。
      * 时长 ≤0 的单元跳过；空单元集按 1.0。

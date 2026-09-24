@@ -15,9 +15,9 @@ export const COLOR = {
 export const ALG_NAMES: Record<string, string> = {
   PROPOSED: '本文方法',
   DP: 'DP',
-  DPS: 'DPS',
+  DPS: 'DP＋转角回插（DPS代码）',
   'TD-TR': 'TD-TR',
-  Trajic: 'Trajic'
+  Trajic: '线性预测抽稀（Trajic代码）'
 }
 
 /**

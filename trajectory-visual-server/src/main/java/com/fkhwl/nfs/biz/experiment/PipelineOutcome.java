@@ -43,7 +43,10 @@ public class PipelineOutcome {
     public double pedAvgM, pedMaxM, sedAvgM, sedMaxM;
     public double sr;                          // 语义点保留率 0~1
     public double unitIntegrity;               // 语义单元完整率 0~1
-    public double dwellFidelity;               // 停留时长保真度 0~1
+    public double dwellFidelity;               // 旧口径：单元内保留点跨度比例宏均值
+    public Double boundarySpanRetention;       // 新口径：完整边界跨度加权保持率；无候选为 null
+    public double spanCompleteSeconds;
+    public double spanEligibleSeconds;
 
     // ---- 无损层字节 ----
     public long naiveBytes;
@@ -91,7 +94,10 @@ public class PipelineOutcome {
         public double pedAvgM, pedMaxM, sedAvgM, sedMaxM;
         public double sr;               // 用与本文相同的锚点评测
         public double unitIntegrity;
-        public double dwellFidelity;
+        public double dwellFidelity;            // 旧口径，兼容历史输出
+        public Double boundarySpanRetention;
+        public double spanCompleteSeconds;
+        public double spanEligibleSeconds;
     }
 
     public static List<TrackPoint> stopAnchorPts(List<TrackPoint> cleaned, StopUnit u) {

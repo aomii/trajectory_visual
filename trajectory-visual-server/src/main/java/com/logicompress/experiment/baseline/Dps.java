@@ -9,8 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * DPS（Direction-Preserving）：DP 后处理——把被抽稀压平的大转向角（急弯/路口）点重新插回，
- * 保留方向信息。阈值：原始子路径上转向角 ≥ turnDeg 的点重新保留。
+ * DP＋转角回插启发式。Dps 是历史算法代码标识，不是原论文 DPTS 的忠实实现。
+ * DP 后处理把被抽稀压平的大转向角点重新插回；转向阈值见 TURN_DEG。
  */
 public class Dps implements LossyBaseline {
 

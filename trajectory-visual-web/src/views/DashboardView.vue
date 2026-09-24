@@ -23,6 +23,7 @@
         <div class="run-meta">
           批次 <b>{{ run.runNo }}</b> · {{ run.runName }} · 状态
           <el-tag :type="run.status === 'SUCCESS' ? 'success' : 'warning'" size="small">{{ run.status }}</el-tag>
+          · 跨度指标 {{ run.metricVersion === 'boundary-span-v2' ? '边界跨度加权率（新版）' : '内部保留点跨度宏均值（旧版）' }}
           · 完成 {{ run.finishedAt }} · 有效运单 {{ run.waybillCount ?? '-' }} ·
           数据源 <span class="ellip">{{ run.dataSourceDir }}</span>
         </div>
@@ -131,6 +132,8 @@ const elStorage = ref<HTMLDivElement>(), elPerf = ref<HTMLDivElement>()
 const charts: any = {}
 
 const run = computed(() => data.value?.run || null)
+const spanLabel = computed(() => run.value?.metricVersion === 'boundary-span-v2'
+  ? '候选边界跨度保持率' : '候选内保留点跨度均值（旧）')
 const kpi = computed(() => data.value?.kpi || {})
 const conclusions = computed(() => data.value?.conclusions || [])
 const algorithms = computed(() => data.value?.algorithmComparison || [])
@@ -259,14 +262,14 @@ function renderSemantic() {
     animation: !exportMode.value,
     color: [COLOR.semantic, '#58a55f', '#b0c975'],
     tooltip: { trigger: 'axis', valueFormatter: (v: any) => v + '%' },
-    legend: { bottom: 0, data: ['语义点保留率 SR', '语义单元完整率', '停留时长保真度'] },
+    legend: { bottom: 0, data: ['全部锚点保留率 SR', '候选单元完整率', spanLabel.value] },
     grid: { left: 16, right: 24, top: 20, bottom: 28, containLabel: true },
     xAxis: { type: 'category', data: names, axisLabel: { color: '#334155' } },
     yAxis: { type: 'value', axisLabel: { formatter: '{value}%', color: '#334155' } },
     series: [
-      { name: '语义点保留率 SR', type: 'bar', data: s('srAvg'), barWidth: 18, itemStyle: { color: (p: any) => (rows[p.dataIndex]?.algorithmCode === 'PROPOSED' ? COLOR.PROPOSED : COLOR.semantic) } },
-      { name: '语义单元完整率', type: 'bar', data: s('semanticUnitCompleteRate'), barWidth: 18 },
-      { name: '停留时长保真度', type: 'bar', data: s('stayDurationPreserveRate'), barWidth: 18 }
+      { name: '全部锚点保留率 SR', type: 'bar', data: s('srAvg'), barWidth: 18, itemStyle: { color: (p: any) => (rows[p.dataIndex]?.algorithmCode === 'PROPOSED' ? COLOR.PROPOSED : COLOR.semantic) } },
+      { name: '候选单元完整率', type: 'bar', data: s('semanticUnitCompleteRate'), barWidth: 18 },
+      { name: spanLabel.value, type: 'bar', data: s('stayDurationPreserveRate'), barWidth: 18 }
     ]
   })
 }
@@ -350,7 +353,7 @@ function exportCSV() {
     algorithm: ALG_NAMES[a.algorithmCode] || a.algorithmCode,
     crTotal: a.crTotalAvg, crLossy: a.crLossyAvg, ped: a.pedAvg, sed: a.sedAvg,
     sr: a.srAvg == null ? '' : a.srAvg, unitIntegrity: a.semanticUnitCompleteRate,
-    dwellFidelity: a.stayDurationPreserveRate, queryMs: a.queryTimeMsAvg,
+    metricVersion: run.value?.metricVersion, candidateSpanMetric: a.stayDurationPreserveRate, queryMs: a.queryTimeMsAvg,
     storageBytes: a.storageBytes, waybills: a.waybillCount
   }))
   const ablRows = (data.value?.ablation || []).map((a: any) => ({
