@@ -71,9 +71,9 @@
       <!-- 语义保真 + 几何误差 双视图 -->
       <el-row :gutter="10" class="mb8">
         <el-col :span="12">
-          <el-card shadow="never" header="语义保真：SR / 单元完整率 / 时长保真度（%）" style="height: 300px">
+          <el-card shadow="never" :header="'候选结构内部保持：SR / 单元完整率 / ' + spanLabel + '（%）'" style="height: 300px">
             <div ref="elSem" class="chart-box" style="height: 240px"></div>
-            <div class="axis-note">口径：SR=压缩后保留锚点/锚点总数；单元完整率=起终锚点成对保留单元占比；时长保真度=可恢复时长/原始时长（均为逐运单均值）。</div>
+            <div class="axis-note">SR包含候选边界及轨迹端点；单元完整率排除无候选运单。{{ run?.metricVersion === 'boundary-span-v2' ? '跨度率按完整候选边界的观测秒数全局加权；不代表真实停车检测准确率。' : '旧批次跨度值为候选内保留点跨度比例的宏均值，不能当作边界跨度保持率。' }}</div>
           </el-card>
         </el-col>
         <el-col :span="12">
@@ -89,7 +89,7 @@
         <el-col :span="14">
           <el-card shadow="never" :header="'chunk 时长权衡：压缩率 / 部分读取字节比例（标出默认 ' + blockLabel(defBlockWindowS) + '）'" style="height: 320px">
             <div ref="elStorage" class="chart-box" style="height: 260px"></div>
-            <div class="axis-note">分块时长增大→总压缩率上升（块内差分更充分），但单次窗口命中读取字节比例上升。权衡曲线见上。</div>
+            <div class="axis-note">{{ data?.storageQueryComparison?.series?.length ? '本批次分块时长扫描：CR_total为内部组合指标，部分读取字节比例为命中负载/全部负载。' : '当前批次没有分块时长扫描；不混用其他批次结果。' }}</div>
           </el-card>
         </el-col>
         <el-col :span="10">
@@ -163,13 +163,14 @@ const accel = computed(() => {
 const kpiCards = computed(() => {
   const k: any = kpi.value
   const proposed = algorithms.value.find((a: any) => a.algorithmCode === 'PROPOSED')
-  const bestCr = algorithms.value.length ? Math.max(...algorithms.value.map((a: any) => a.crLossyAvg ?? 0)) : 0
+  const availableCr = algorithms.value.map((a: any) => a.crLossyAvg).filter((v: any) => v != null)
+  const bestCr = availableCr.length ? Math.max(...availableCr) : null
   const kpiArr = [
     { key: 'waybillCount', label: '有效运单数', value: k.waybillCount == null ? '-' : fmtInt(k.waybillCount), unit: '', note: '参与统计的清洗后有效运单', highlight: false },
     { key: 'rawPointCount', label: '有效轨迹点数', value: k.rawPointCount == null ? '-' : fmtInt(k.rawPointCount), unit: '', note: '清洗后总点数（逐运单基准）', highlight: false },
     { key: 'crE2eGlobal', label: '全局端到端编码负载压缩率', value: k.crE2eGlobal == null ? '-' : fmtNum(k.crE2eGlobal, 2), unit: 'x', note: compNote('统一编码器公平比较', k.crE2eGlobal, 'crE2eGlobal'), highlight: false },
-    { key: 'crLossyAvg', label: '有损层压缩率', value: k.crLossyAvg == null ? '-' : fmtNum(k.crLossyAvg, 2), unit: 'x', note: proposed ? '有损层减点数（本文' + fmtNum(proposed.crLossyAvg, 1) + ' vs DP ' + fmtNum(bestCr, 1) + '）' : '—', highlight: false },
-    { key: 'srAvg', label: '语义点保留率 SR', value: k.srAvg == null ? '-' : fmtPct(k.srAvg, 0), unit: '', note: '语义锚点压缩后保留比例', highlight: k.srAvg === 1 },
+    { key: 'crLossyAvg', label: '有损层压缩率', value: k.crLossyAvg == null ? '-' : fmtNum(k.crLossyAvg, 2), unit: 'x', note: proposed ? '有损层减点数（本文' + fmtNum(proposed.crLossyAvg, 1) + '；可用算法最高 ' + fmtNum(bestCr, 1) + '）' : '—', highlight: false },
+    { key: 'srAvg', label: '全部锚点保留率 SR', value: k.srAvg == null ? '-' : fmtPct(k.srAvg, 0), unit: '', note: '候选边界与轨迹端点的内部保持', highlight: k.srAvg === 1 },
     { key: 'accel', label: '部分解压加速比', value: accel.value, unit: '', note: '全量解压/部分解压（1h窗）', highlight: false }
   ]
   return kpiArr.filter((x) => x.value !== '-')
@@ -218,9 +219,9 @@ function renderAlgCompare() {
   const meta = METRIC_META[metricKey.value] || { unit: '', label: metricKey.value }
   const rows = algorithms.value
   const names = rows.map((a: any) => ALG_NAMES[a.algorithmCode] || a.algorithmCode)
-  const values = rows.map((a: any) => (a[metricKey.value] == null ? 0 : a[metricKey.value]))
+  const values = rows.map((a: any) => a[metricKey.value] == null ? null : Number(a[metricKey.value]))
   const isPct = metricKey.value === 'srAvg' || metricKey.value === 'semanticUnitCompleteRate'
-  const fmtY = (v: number) => (isPct ? v * 100 : v)
+  const fmtY = (v: number | null) => v == null ? null : (isPct ? v * 100 : v)
   const showPct = isPct
   setOption(ensure('alg'), {
     animation: !exportMode.value,
@@ -239,7 +240,7 @@ function renderAlgCompare() {
       itemStyle: {
         color: (p: any) => (rows[p.dataIndex]?.algorithmCode === 'PROPOSED' ? COLOR.PROPOSED : colorOf(rows[p.dataIndex]?.algorithmCode))
       },
-      label: { show: true, position: 'top', formatter: (p: any) => (showPct ? p.value.toFixed(1) + '%' : fmtNum(p.value, 1)) }
+       label: { show: true, position: 'top', formatter: (p: any) => p.value == null ? '' : (showPct ? Number(p.value).toFixed(1) + '%' : fmtNum(p.value, 1)) }
     }]
   })
 }
@@ -257,7 +258,7 @@ function renderSemantic() {
   if (!elSem.value) return
   const rows = algorithms.value
   const names = rows.map((a: any) => ALG_NAMES[a.algorithmCode] || a.algorithmCode)
-  const s = (f: string) => rows.map((a: any) => ((a[f] == null ? 0 : a[f]) * 100).toFixed(1))
+  const s = (f: string) => rows.map((a: any) => a[f] == null ? null : +(Number(a[f]) * 100).toFixed(1))
   setOption(ensure('sem'), {
     animation: !exportMode.value,
     color: [COLOR.semantic, '#58a55f', '#b0c975'],
@@ -278,8 +279,8 @@ function renderError() {
   if (!elErr.value) return
   const rows = algorithms.value
   const names = rows.map((a: any) => ALG_NAMES[a.algorithmCode] || a.algorithmCode)
-  const ped = rows.map((a: any) => a.pedAvg == null ? 0 : a.pedAvg)
-  const sed = rows.map((a: any) => a.sedAvg == null ? 0 : a.sedAvg)
+  const ped = rows.map((a: any) => a.pedAvg == null ? null : Number(a.pedAvg))
+  const sed = rows.map((a: any) => a.sedAvg == null ? null : Number(a.sedAvg))
   setOption(ensure('err'), {
     animation: !exportMode.value,
     color: [COLOR.error, '#b78a4a'],
@@ -289,8 +290,8 @@ function renderError() {
     xAxis: { type: 'category', data: names, axisLabel: { color: '#334155' } },
     yAxis: { type: 'value', name: 'm', axisLabel: { color: '#334155' } },
     series: [
-      { name: '平均位置误差 PED', type: 'bar', data: ped.map((v) => +Number(v).toFixed(2)), barWidth: 18 },
-      { name: '平均同步误差 SED', type: 'bar', data: sed.map((v) => +Number(v).toFixed(2)), barWidth: 18 }
+      { name: '平均位置误差 PED', type: 'bar', data: ped.map((v) => v == null ? null : +v.toFixed(2)), barWidth: 18 },
+      { name: '平均同步误差 SED', type: 'bar', data: sed.map((v) => v == null ? null : +v.toFixed(2)), barWidth: 18 }
     ]
   })
 }
@@ -301,8 +302,8 @@ function renderStorage() {
   // 默认分片时长由后端配置给出（2026-09-11 起 3600s=1h），前端不写死；拿不到就不画标注线
   const def = data.value?.storageQueryComparison?.defaultBlockWindowS ?? null
   const x = series.map((s: any) => (s.blockWindowS / 60) + 'min')
-  const cr = series.map((s: any) => s.crTotalAvg ?? 0)
-  const rr = series.map((s: any) => (s.partialReadRatioAvg ?? 0) * 100)
+  const cr = series.map((s: any) => s.crTotalAvg ?? null)
+  const rr = series.map((s: any) => s.partialReadRatioAvg == null ? null : s.partialReadRatioAvg * 100)
   const opt: any = {
     animation: !exportMode.value,
     tooltip: { trigger: 'axis', valueFormatter: (v: any) => String(v) },
@@ -315,7 +316,7 @@ function renderStorage() {
     ],
     series: [
       { name: '总压缩率 CR_total', type: 'line', data: cr, smooth: true, symbolSize: 7, lineStyle: { color: COLOR.PROPOSED, width: 3 }, itemStyle: { color: COLOR.PROPOSED }, markLine: def != null && x.indexOf((def / 60) + 'min') >= 0 ? { symbol: 'none', label: { formatter: '默认 ' + blockLabel(def), position: 'insideEndTop' }, lineStyle: { type: 'dashed', color: '#d96a3c' }, data: [{ xAxis: (def / 60) + 'min' }] } : undefined },
-      { name: '部分读取字节比例', type: 'line', yAxisIndex: 1, data: rr.map((v: number) => +v.toFixed(1)), smooth: true, symbolSize: 7, lineStyle: { color: COLOR.error, width: 2 }, itemStyle: { color: COLOR.error } }
+      { name: '部分读取字节比例', type: 'line', yAxisIndex: 1, data: rr.map((v: number | null) => v == null ? null : +v.toFixed(1)), smooth: true, symbolSize: 7, lineStyle: { color: COLOR.error, width: 2 }, itemStyle: { color: COLOR.error } }
     ]
   }
   setOption(ensure('storage'), opt)
@@ -330,7 +331,7 @@ function renderPerf() {
     xAxis: { type: 'category', data: ['全量解压', '部分解压(1h窗)'], axisLabel: { color: '#334155' } },
     yAxis: { type: 'value', name: 'ms', axisLabel: { color: '#334155' } },
     series: [{
-      type: 'bar', barWidth: 44, data: [decodeMs.value ?? 0, queryMs.value ?? 0],
+      type: 'bar', barWidth: 44, data: [decodeMs.value ?? null, queryMs.value ?? null],
       itemStyle: { color: (p: any) => (p.dataIndex === 0 ? '#b78a4a' : COLOR.PROPOSED) },
       label: { show: true, position: 'top', formatter: (p: any) => fmtNum(p.value, 2) + ' ms' }
     }]
@@ -351,7 +352,8 @@ async function exportPNG() {
 function exportCSV() {
   const algRows = algorithms.value.map((a: any) => ({
     algorithm: ALG_NAMES[a.algorithmCode] || a.algorithmCode,
-    crTotal: a.crTotalAvg, crLossy: a.crLossyAvg, ped: a.pedAvg, sed: a.sedAvg,
+    crE2eGlobal: a.crE2eGlobal, inputBytes: a.inputBytes, payloadBytes: a.storageBytes,
+    crTotalInternal: a.crTotalAvg, crLossyAvg: a.crLossyAvg, ped: a.pedAvg, sed: a.sedAvg,
     sr: a.srAvg == null ? '' : a.srAvg, unitIntegrity: a.semanticUnitCompleteRate,
     metricVersion: run.value?.metricVersion, candidateSpanMetric: a.stayDurationPreserveRate, queryMs: a.queryTimeMsAvg,
     storageBytes: a.storageBytes, waybills: a.waybillCount

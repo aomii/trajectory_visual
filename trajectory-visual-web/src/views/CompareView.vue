@@ -152,7 +152,7 @@ const statRows = computed(() => algorithms.value.map((a: any) => {
   return { alg: algName(a.algorithmCode), mean: f(st?.mean), median: f(st?.median), min: f(st?.min), max: f(st?.max), waybills: a.waybillCount }
 }))
 
-function rawOf(alg: any, key: string) { return alg[key] == null ? 0 : alg[key] }
+function rawOf(alg: any, key: string): number | null { return alg[key] == null ? null : Number(alg[key]) }
 
 async function load() {
   try {
@@ -167,7 +167,7 @@ async function render() {
   const rows = algorithms.value.filter((a: any) => sel.includes(a.algorithmCode))
   const names = rows.map((a: any) => algName(a.algorithmCode))
   const isPct = meta.unit === '%'
-  const fmt = (v: number) => (isPct ? v * 100 : v)
+  const fmt = (v: number | null) => v == null ? null : (isPct ? v * 100 : v)
 
   let option: any
   if (chartType.value === 'radar') {
@@ -179,7 +179,7 @@ async function render() {
       { name: 'PED(越低优)', field: 'pedAvg', higher: -1 },
       { name: 'SED(越低优)', field: 'sedAvg', higher: -1 },
       { name: '存储(越低优)', field: 'storageBytes', higher: -1 }
-    ]
+    ].filter((d) => algorithms.value.every((a: any) => rawOf(a, d.field) != null))
     const norm = (vals: number[], higher: number) => {
       const lo = Math.min(...vals), hi = Math.max(...vals)
       return vals.map((v) => (hi === lo ? 50 : ((higher * (v - lo)) / (hi - lo) + (higher < 0 ? 1 : 0)) * (higher < 0 ? 100 : 100)))
@@ -187,7 +187,7 @@ async function render() {
     const series = rows.map((a: any) => ({
       name: algName(a.algorithmCode),
       value: dims.map((d) => {
-        const list = algorithms.value.map((x: any) => rawOf(x, d.field))
+        const list = algorithms.value.map((x: any) => rawOf(x, d.field) as number)
         const nn = norm(list, d.higher)
         return +nn[algorithms.value.indexOf(a)].toFixed(1)
       })

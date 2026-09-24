@@ -127,9 +127,7 @@ public class EvaluationQueryService {
     }
 
     /**
-     * 消融实验行。**与 dashboard() 同口径**：默认批（6.3 主实验）里没有消融数据时，
-     * 回退到"最近一个含消融数据的批次"（6.6）。否则 /evaluation/ablation 直接返回空，
-     * 消融页就没图了（2026-09-11 用户报障）。
+     * 消融实验行，只返回指定批次。不同批次的样本与参数可能不同，不自动拼接。
      */
     public List<TrajectoryEvalAblationResult> ablationOf(Long runId) {
         TrajectoryEvalRun run = resolveRun(runId);
@@ -137,8 +135,7 @@ public class EvaluationQueryService {
     }
 
     /**
-     * 参数敏感性行（按 paramType）。
-     * 同 {@link #ablationOf}：默认批里没有该类型数据时，回退到最近含该类型数据的批次。
+     * 参数敏感性行（按 paramType），只返回指定批次。
      */
     public List<TrajectoryEvalParamResult> paramOf(Long runId, String paramType) {
         TrajectoryEvalRun run = resolveRun(runId);
@@ -269,7 +266,7 @@ public class EvaluationQueryService {
         root.put("semanticComparison", buildSemantic(algs));
         root.put("errorComparison", buildError(algs));
 
-        // ---- storageQueryComparison（block 时长扫描；当前批没有则回退最新含该数据的批次）----
+        // ---- storageQueryComparison（只读取当前批次）----
         List<Map<String, Object>> storage = new ArrayList<>();
         List<TrajectoryEvalParamResult> blk = paramRowsLatest(run.getId(), "block_window");
         for (TrajectoryEvalParamResult p : blk) {
@@ -287,11 +284,11 @@ public class EvaluationQueryService {
         }
         Map<String, Object> storageQuery = new LinkedHashMap<>();
         storageQuery.put("series", storage);
-        // 默认分片时长取自运行配置（2026-09-11 起为 3600s=1h），前端据此在扫描曲线上标"默认值"
-        storageQuery.put("defaultBlockWindowS", eprops.getBlockWindowS());
+        // 默认值来自该批次的参数快照，不能使用服务当前配置覆盖历史批次。
+        storageQuery.put("defaultBlockWindowS", parameterLong(run.getParameterJson(), "block-window-s"));
         root.put("storageQueryComparison", storageQuery);
 
-        // ---- ablation（当前批没有则回退最新含消融数据的批次）----
+        // ---- ablation（只读取当前批次）----
         List<TrajectoryEvalAblationResult> abs = ablationRowsLatest(run.getId());
         List<Map<String, Object>> abList = new ArrayList<>();
         for (TrajectoryEvalAblationResult a : abs) {
@@ -353,8 +350,7 @@ public class EvaluationQueryService {
     }
 
     // ------------------------------------------------------------------
-    // 数据集回退：指定批次若无某类结果(消融/参数)，回退到"最近包含该类结果"的 SUCCESS 批次
-    // （保证默认首屏一次聚合能看到各实验图；切换批次后仍精确展示该批次内容）
+    // 关联结果必须来自同一批次；缺项保留为空，由页面说明。
     // ------------------------------------------------------------------
 
     private List<TrajectoryEvalParamResult> paramRowsLatest(Long runId, String type) {
@@ -363,29 +359,22 @@ public class EvaluationQueryService {
                         .eq(TrajectoryEvalParamResult::getRunId, runId)
                         .eq(TrajectoryEvalParamResult::getParamType, type)
                         .orderByAsc(TrajectoryEvalParamResult::getParamValue));
-        if (!rows.isEmpty()) return rows;
-        TrajectoryEvalParamResult last = paramMapper.selectOne(
-                new LambdaQueryWrapper<TrajectoryEvalParamResult>()
-                        .eq(TrajectoryEvalParamResult::getParamType, type)
-                        .orderByDesc(TrajectoryEvalParamResult::getId).last("limit 1"));
-        if (last == null) return rows;
-        return paramMapper.selectList(new LambdaQueryWrapper<TrajectoryEvalParamResult>()
-                .eq(TrajectoryEvalParamResult::getRunId, last.getRunId())
-                .eq(TrajectoryEvalParamResult::getParamType, type)
-                .orderByAsc(TrajectoryEvalParamResult::getParamValue));
+        return rows;
     }
 
     private List<TrajectoryEvalAblationResult> ablationRowsLatest(Long runId) {
         List<TrajectoryEvalAblationResult> rows = abMapper.selectList(
                 new LambdaQueryWrapper<TrajectoryEvalAblationResult>()
                         .eq(TrajectoryEvalAblationResult::getRunId, runId));
-        if (!rows.isEmpty()) return rows;
-        TrajectoryEvalAblationResult last = abMapper.selectOne(
-                new LambdaQueryWrapper<TrajectoryEvalAblationResult>()
-                        .orderByDesc(TrajectoryEvalAblationResult::getId).last("limit 1"));
-        if (last == null) return rows;
-        return abMapper.selectList(new LambdaQueryWrapper<TrajectoryEvalAblationResult>()
-                .eq(TrajectoryEvalAblationResult::getRunId, last.getRunId()));
+        return rows;
+    }
+
+    private Long parameterLong(String json, String key) {
+        if (json == null) return null;
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(
+                "\\\"" + java.util.regex.Pattern.quote(key) + "\\\"\\s*:\\s*\\\"?(\\d+)\\\"?")
+                .matcher(json);
+        return matcher.find() ? Long.parseLong(matcher.group(1)) : null;
     }
 
     private List<Map<String, Object>> buildDpTolerance(Long runId) {
