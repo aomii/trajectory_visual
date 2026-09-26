@@ -6,9 +6,9 @@ package com.logicompress.experiment.model;
  * gtm 为北京时间（UTC+8）。
  */
 public class TrackPoint {
-    /** 纬度（WGS84） */
+    /** 纬度（保持数据源坐标系；当前企业数据为 GCJ-02） */
     public double lat;
-    /** 经度（WGS84） */
+    /** 经度（保持数据源坐标系；当前企业数据为 GCJ-02） */
     public double lon;
     /** 速度，km/h */
     public double spdKph;

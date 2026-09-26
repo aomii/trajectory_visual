@@ -14,11 +14,11 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * 表 6-14：偏移量经验熵下界 vs 编码后字节率。
+ * 表 6-14：偏移量零阶经验熵参照 vs 编码后字节率。
  *
  * <p>对保留点序列的六个字段（纬度/经度/速度/高程/航向/时间）量化后做一阶差分 → ZigZag，
- * 统计各字段偏移量取值的经验熵（bit/偏移量），求和得到"每点经验熵下界"；
- * 再与"整流编码（整链单块）+ DEFLATE"后的字节率对比，得到编码器相对熵下界的倍数。
+ * 统计各字段偏移量取值的零阶经验熵（bit/偏移量），求和得到无上下文独立符号模型的参照值；
+ * 再与"整链单块编码 + DEFLATE"后的字节率对比。它不是所有编码器的普适下界。
  *
  * <p>该表用于如实说明：本文无损层的差异化价值在分块随机访问，而非熵最优（见论文 6.4.2）。
  */
@@ -89,14 +89,14 @@ public final class EntropyBenchmark {
         double zipBitsPerPoint = nPoints == 0 ? 0 : zippedTotal * 8.0 / nPoints;
         List<String[]> sum = new ArrayList<>();
         sum.add(new String[]{"保留点数", String.valueOf(nPoints)});
-        sum.add(new String[]{"经验熵下界（bit/点）", "**" + SupplementTables.r4(sumEntropyBits) + "**"});
+        sum.add(new String[]{"零阶经验熵参照（bit/点）", "**" + SupplementTables.r4(sumEntropyBits) + "**"});
         sum.add(new String[]{"整流编码 + DEFLATE 后（bit/点）", SupplementTables.r4(zipBitsPerPoint)
                 + "（" + SupplementTables.r4(zipBitsPerPoint / 8) + " B/点）"});
-        sum.add(new String[]{"相对熵下界", "**" + SupplementTables.r4(sumEntropyBits == 0 ? 0
+        sum.add(new String[]{"相对零阶参照比值", "**" + SupplementTables.r4(sumEntropyBits == 0 ? 0
                 : zipBitsPerPoint / sumEntropyBits) + "×**"});
         SupplementTables.both(outDir, "table6_14_entropy_summary",
-                "表 6-14 偏移量经验熵 vs 编码后字节率（" + nPoints + " 点）",
-                "整流编码 = 整链单块（不分块）编码 + DEFLATE，代表「放弃随机访问」时的字节极限。",
+                "表 6-14 偏移量零阶经验熵 vs 编码后字节率（" + nPoints + " 点）",
+                "整链单块编码 + DEFLATE 是本编码器的无分块对照，不代表所有编码方式的字节极限；经验熵仅对零阶符号模型成立。",
                 new String[]{"指标", "数值"}, sum);
 
         System.out.printf(Locale.ROOT, "[表6-14] 完成：保留点 %,d，经验熵 %.2f bit/点，编码后 %.2f bit/点（%.2f×），耗时 %.1fs%n",

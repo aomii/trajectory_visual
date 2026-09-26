@@ -24,9 +24,8 @@ import java.util.Map;
 /**
  * 补充实验【手动运行】入口 —— 产出论文第 6 章里主实验覆盖不到的那几张表。
  *
- * <p>结果直接写到 {@code src/main/resources/export/supplement/}（即
- * {@code D:\aoming\电科\毕业论文 - claude\05可视化系统\trajectory-visual-server\src\main\resources\export\supplement}），
- * 每张表同时给 {@code .csv}（数据，可复核）与 {@code .md}（论文可直接粘贴的表格）两种格式。
+ * <p>结果默认写到模块的 {@code src/main/resources/export/supplement/}，可用
+ * {@code -Dsupplement.outDir=<本机输出目录>} 覆盖；每张表同时给 {@code .csv} 和 {@code .md}。
  *
  * <p><b>产出的表 ↔ 论文表号</b>
  * <pre>
@@ -34,14 +33,16 @@ import java.util.Map;
  *   table6_12_lossless_summary       → 表 6-12 无损层压缩结果
  *   table6_13_bench_summary          → 表 6-13 编码/解码耗时基准
  *   table6_14_entropy_summary        → 表 6-14 偏移量经验熵 vs 编码后字节率
- *   table6_16_block_tradeoff         → 表 6-16 块长权衡
- *   table6_18_hull_summary           → 表 6-18 凸包保形度与压缩失真速度比
+ *   table6_16_block_tradeoff         → 表 6-17 块长权衡（文件名保留历史编号）
+ *   random_window_summary            → 表 6-18 随机窗口微基准
+ *   near_neighbor_summary            → 表 6-19 候选锚点近邻对照
+ *   table6_18_hull_summary           → 表 6-21 纯轨迹/围栏增强凸包与重建边指标
  *   table6_p1_*                       → P1 候选停留单元参数敏感性
  * </pre>
- * （表 6-19 方案 A/B 已按用户 2026-09-11 决定取消，不再产出。）
+ * 上述 CSV 文件名中的旧表号仅为兼容历史导出；以论文 04 版正文表号为准。
  *
  * <p><b>前置</b>：本地 MySQL(ml_network_freight) 已启动，且 {@code trajectory_waybill} 已导入运单
- * （收发坐标与装卸货时间供表 6-7 的围栏对照、表 6-18 的凸包控制点使用）。源目录取
+     * （收发坐标与装卸货时间供表 6-7 的围栏对照、表 6-21 的凸包敏感性列使用）。源目录取
  * {@code trajectory.source.full-data-dir}。全量 5224 运单预计数分钟到十几分钟。
  *
  * <p><b>运行方式</b>
@@ -106,6 +107,15 @@ public class SupplementExperimentTest {
         listExported();
     }
 
+    /** 只重算无损层规模与相同分块下的规范文本 gzip 对照，不重复 30 轮计时。 */
+    @Test
+    public void runLosslessSizeBenchmark() throws Exception {
+        List<SupplementContext.WaybillCtx> ctxs =
+                SupplementContext.load(buildConfig(), sourceDir(), loadMeta(), limit());
+        LosslessBenchmark.runSize(buildConfig(), ctxs, OUT_DIR);
+        listExported();
+    }
+
     /**
      * 完整组合方案：所有有损方法叠加同一分块无损编码器。
      *
@@ -149,7 +159,7 @@ public class SupplementExperimentTest {
         listExported();
     }
 
-    /** 只跑表 6-16（块长权衡） */
+    /** 只跑表 6-17（块长权衡；文件名保留旧编号） */
     @Test
     public void runBlockLengthSweep() throws Exception {
         List<SupplementContext.WaybillCtx> ctxs =
@@ -158,7 +168,7 @@ public class SupplementExperimentTest {
         listExported();
     }
 
-    /** 只跑表 6-18（凸包保形度与压缩失真速度比） */
+    /** 只跑表 6-21（凸包保形度与重建边超阈值比例） */
     @Test
     public void runHullShapeBenchmark() throws Exception {
         List<SupplementContext.WaybillCtx> ctxs =

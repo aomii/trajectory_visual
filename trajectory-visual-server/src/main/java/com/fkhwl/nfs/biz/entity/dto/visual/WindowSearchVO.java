@@ -20,10 +20,28 @@ public class WindowSearchVO {
     public double readRatio;           // bytesRead / totalBytes
     public double blockHitRatio;       // hitChunks / totalChunks
 
-    /** 正确性：部分解压取回窗口点数 vs 全量解压同窗口点数 */
+    /** 正确性：部分解压与全量解压在同一闭区间的点序列比较。 */
     public int partialPoints;
     public int fullPoints;
     public boolean consistent;
+    public boolean pointCountConsistent;
+    public boolean contentConsistent;
+    public boolean digestConsistent;
+    public String partialSha256;
+    public String fullSha256;
+
+    /** 从 chunk 0 的持久化候选元数据检索，与点序列结果相互独立。 */
+    public List<WindowStopInterval> candidateIntervals = new ArrayList<>();
+
+    public static class WindowStopInterval {
+        public int seq;
+        public String label;
+        public long observedStartEpoch;
+        public long observedEndEpoch;
+        public long overlapStartEpoch;
+        public long overlapEndEpoch;
+        public boolean retainedBothVerified;
+    }
 
     /** 耗时对比（毫秒，保留小数区分亚毫秒操作） */
     public double partialMs;

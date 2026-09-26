@@ -14,7 +14,7 @@ import java.util.Map;
  * 补充实验编排器：一次装载运单，顺序跑完论文第 6 章需要的全部补充实验，结果写 {@code outDir}。
  *
  * <p>与主实验（第 6 章 {@code Chapter6ExperimentRunner}，结果落 MySQL）的分工：
- * 主实验覆盖 6.2–6.6 的算法对比/消融/参数敏感性；本包只补主实验没覆盖的 5 组量：
+ * 主实验覆盖 6.2–6.6 的算法对比/消融/参数敏感性；本包补充：
  * <ul>
  *   <li>表 6-7  静态同坐标合并 vs ST-DBSCAN 选型对比 → {@link StopRecognitionCompare}</li>
  *   <li>表 6-12 无损层压缩结果（朴素字节/编码后字节/压缩率） → {@link LosslessBenchmark#runSize}</li>
@@ -24,6 +24,8 @@ import java.util.Map;
  *   <li>表 6-18 凸包保形度与压缩失真速度比 → {@link HullShapeBenchmark}</li>
  *   <li>完整组合方案统一编码对比 → {@link EndToEndBenchmark}</li>
  *   <li>P1 候选停留单元参数敏感性 → {@link P1SensitivityBenchmark}</li>
+ *   <li>同候选边界的 TD-TR、DP+独立候选元数据近邻对照 → {@link NearNeighborBenchmark}</li>
+ *   <li>随机 15/60/120 分钟窗口内存解码基准 → {@link RandomWindowBenchmark}</li>
  * </ul>
  * （表 6-19「方案 A vs 方案 B」已按用户 2026-09-11 决定从论文中取消，故本包不实现。）
  */
@@ -67,9 +69,11 @@ public final class SupplementRunner {
         LosslessBenchmark.runSize(cfg, ctxs, outDir);
         LosslessBenchmark.runBench(cfg, ctxs, outDir);
         EndToEndBenchmark.run(cfg, ctxs, outDir);
+        NearNeighborBenchmark.run(cfg, ctxs, outDir);
         P1SensitivityBenchmark.run(cfg, ctxs, outDir);
         EntropyBenchmark.run(cfg, ctxs, outDir);
         BlockLengthSweep.run(cfg, ctxs, outDir);
+        RandomWindowBenchmark.run(cfg, ctxs, outDir);
         HullShapeBenchmark.run(cfg, ctxs, outDir);
 
         double min = (System.currentTimeMillis() - t0) / 60000.0;

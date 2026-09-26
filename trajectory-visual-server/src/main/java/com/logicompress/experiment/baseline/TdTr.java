@@ -6,6 +6,8 @@ import com.logicompress.experiment.model.TrackPoint;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * TD-TR（Top-Down Time-Ratio）：DP 变体，分裂准则用同步欧氏距离 SED——
@@ -24,6 +26,27 @@ public class TdTr implements LossyBaseline {
         for (int i = 0; i < pts.size(); i++) {
             if (keep[i]) result.add(i);
         }
+        return result;
+    }
+
+    /** 同一候选边界为强制断点，在每个断线连续段内运行 TD-TR 的近邻对照。 */
+    public List<Integer> compressWithAnchors(CleanedTrack cleaned, Set<Integer> anchors, double tolM) {
+        List<TrackPoint> pts = cleaned.points;
+        boolean[] keep = new boolean[pts.size()];
+        for (int[] seg : cleaned.segments) {
+            TreeSet<Integer> cuts = new TreeSet<>();
+            cuts.add(seg[0]);
+            cuts.add(seg[1]);
+            for (int anchor : anchors) if (anchor >= seg[0] && anchor <= seg[1]) cuts.add(anchor);
+            Integer previous = null;
+            for (int cut : cuts) {
+                if (previous != null && cut > previous) tdtr(pts, previous, cut, tolM, keep);
+                keep[cut] = true;
+                previous = cut;
+            }
+        }
+        List<Integer> result = new ArrayList<>();
+        for (int i = 0; i < keep.length; i++) if (keep[i]) result.add(i);
         return result;
     }
 

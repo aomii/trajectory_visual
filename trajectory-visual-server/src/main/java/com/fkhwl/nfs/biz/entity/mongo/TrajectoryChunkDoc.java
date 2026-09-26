@@ -117,7 +117,7 @@ public class TrajectoryChunkDoc {
         private Double durationS;
         /** 语义类别：REST / TRAFFIC（v2 口径不再区分装卸货） */
         private String label;
-        /** 起/终锚点坐标（WGS84）与锚点对应保留点时间 */
+        /** 起/终锚点源坐标（当前数据为 GCJ-02）与锚点对应保留点时间 */
         private Double startLat;
         private Double startLon;
         private Double endLat;

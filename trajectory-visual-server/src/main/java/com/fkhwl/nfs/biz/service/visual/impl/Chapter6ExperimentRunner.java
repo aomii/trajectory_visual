@@ -489,6 +489,9 @@ public class Chapter6ExperimentRunner {
                     Waybill w = TrackSourceUtil.parseFile(f);
                     PipelineOutcome o = CompressionPipeline.process(w, cfg, true, true, false);
                     if (o == null) continue;
+                    if (!o.partialCorrect) {
+                        throw new IllegalStateException("窗口内容或摘要与全量解码不一致: " + no);
+                    }
                     os.add(o);
                     rawTotal += o.nClean;
                     persistWaybillRow(run.getId(), o, "PROPOSED");
@@ -498,7 +501,9 @@ public class Chapter6ExperimentRunner {
                 }
             }
             persistAlgorithmRow(run.getId(), aggregateProposed(os, ok, rawTotal));
-            finishRun(run, ok, rawTotal, true, "PROPOSED 单算法批次");
+            boolean allPassed = ok == files.size();
+            finishRun(run, ok, rawTotal, allPassed,
+                    "PROPOSED 单算法批次；窗口六字段/顺序/SHA-256一致 " + ok + "/" + files.size());
             return run.getRunNo();
         } catch (Throwable ex) {
             finishRun(run, ok, rawTotal, false, String.valueOf(ex));
@@ -592,7 +597,12 @@ public class Chapter6ExperimentRunner {
             try {
                 Waybill w = TrackSourceUtil.parseFile(f);
                 PipelineOutcome o = CompressionPipeline.process(w, cfg, true, true, false);
-                if (o != null) out.add(o);
+                if (o != null) {
+                    if (!o.partialCorrect) {
+                        throw new IllegalStateException("窗口内容或摘要与全量解码不一致: " + no);
+                    }
+                    out.add(o);
+                }
             } catch (Exception e) {
                 recordError(run, exp, no, f, e);
             }
@@ -667,14 +677,15 @@ public class Chapter6ExperimentRunner {
 
     /**
      * 参数敏感性：DP 容差扫描 5/10/15/20/30m（本文 PROPOSED 与各基线）+
-     * 分块时长扫描 300/600/1800/3600s（本文）。结果写 trajectory_eval_param_result。
+     * 分块时长扫描 300/600/1800/3600/7200/14400s（本文，覆盖 2 h/4 h）。
      */
     public String runParameterSensitivity() {
         TrajectoryEvalRun run = startRun("参数敏感性(DP容差扫描 + 分块时长扫描)");
         String exp = "param-sensitivity";
         List<Path> files = sourceFiles();
         double[] dpTols = {5, 10, 15, 20, 30};
-        long[] blockWindows = {300, 600, 1800, 3600};
+        long[] blockWindows = {300, 600, 1800, 3600, 7200, 14400};
+        long lastBlockRawPoints = 0;
 
         // DP 容差扫描（记录 CR_lossy / SR / CR_total(本文才有)）
         try {
@@ -696,9 +707,45 @@ public class Chapter6ExperimentRunner {
                 ExperimentConfig cfg = ExperimentConfigs.from(props);
                 cfg.blockWindowS = bs;
                 List<PipelineOutcome> os = rerun(files, cfg, exp, run);
+                if (os.size() != files.size()) {
+                    throw new IllegalStateException("块长 " + bs + "s 有效运单 " + os.size()
+                            + "/" + files.size() + "，不得作为全量结果");
+                }
                 persistParam(run, "block_window", String.valueOf(bs), "PROPOSED", os);
+                lastBlockRawPoints = sumRaw(os);
             }
-            finishRun(run, 0, 0, true, "参数敏感性完成(dp_tolerance×" + dpTols.length + "+block_window×" + blockWindows.length + ")");
+            finishRun(run, files.size(), lastBlockRawPoints, true,
+                    "参数敏感性完成：每档全量 " + files.size() + " 运单(dp_tolerance×"
+                            + dpTols.length + "+block_window×" + blockWindows.length + ")");
+            return run.getRunNo();
+        } catch (Throwable ex) {
+            finishRun(run, 0, 0, false, String.valueOf(ex));
+            throw ex;
+        }
+    }
+
+    /** 仅补测 2 h/4 h 块长；既有 <=1 h 档由完整参数批次提供。 */
+    public String runBlockWindowSensitivity() {
+        TrajectoryEvalRun run = startRun("分块时长敏感性(补测2h/4h)");
+        String exp = "block-window-sensitivity";
+        List<Path> files = sourceFiles();
+        long[] blockWindows = {7200, 14400};
+        long lastBlockRawPoints = 0;
+        try {
+            for (long bs : blockWindows) {
+                ExperimentConfig cfg = ExperimentConfigs.from(props);
+                cfg.blockWindowS = bs;
+                List<PipelineOutcome> os = rerun(files, cfg, exp, run);
+                if (os.size() != files.size()) {
+                    throw new IllegalStateException("块长 " + bs + "s 有效运单 " + os.size()
+                            + "/" + files.size() + "，不得作为全量结果");
+                }
+                persistParam(run, "block_window", String.valueOf(bs), "PROPOSED", os);
+                lastBlockRawPoints = sumRaw(os);
+            }
+            finishRun(run, files.size(), lastBlockRawPoints, true,
+                    "分块时长敏感性完成：每档全量 " + files.size() + " 运单(block_window×"
+                            + blockWindows.length + ")");
             return run.getRunNo();
         } catch (Throwable ex) {
             finishRun(run, 0, 0, false, String.valueOf(ex));
@@ -840,6 +887,12 @@ public class Chapter6ExperimentRunner {
     private long sumClean(List<PipelineOutcome> os) {
         long s = 0;
         for (PipelineOutcome o : os) s += o.nClean;
+        return s;
+    }
+
+    private long sumRaw(List<PipelineOutcome> os) {
+        long s = 0;
+        for (PipelineOutcome o : os) s += o.nRaw;
         return s;
     }
 

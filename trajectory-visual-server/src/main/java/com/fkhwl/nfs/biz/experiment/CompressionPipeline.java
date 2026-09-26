@@ -1,5 +1,6 @@
 package com.fkhwl.nfs.biz.experiment;
 
+import com.fkhwl.nfs.biz.util.WindowResultVerifier;
 import com.logicompress.experiment.baseline.Dps;
 import com.logicompress.experiment.baseline.LossyBaseline;
 import com.logicompress.experiment.baseline.PlainDp;
@@ -138,12 +139,13 @@ public final class CompressionPipeline {
                 r.partialBytesRatio = (double) wr.bytesRead / r.zippedBytes;
                 r.partialBlocksRatio = (double) wr.blocksHit / r.blocks;
                 r.decodedInWindow = wr.points.size();
-                int full = 0;
+                List<TrackPoint> fullWindow = new ArrayList<>();
                 for (TrackPoint p : all) {
-                    if (p.gtmEpoch >= t1 && p.gtmEpoch <= t2) full++;
+                    if (p.gtmEpoch >= t1 && p.gtmEpoch <= t2) fullWindow.add(p);
                 }
-                r.fullInWindow = full;
-                r.partialCorrect = wr.points.size() == full;
+                r.fullInWindow = fullWindow.size();
+                r.partialCorrect = WindowResultVerifier.sameContent(wr.points, fullWindow)
+                        && WindowResultVerifier.sha256(wr.points).equals(WindowResultVerifier.sha256(fullWindow));
             }
         } else {
             // 去无损层（消融 A3）：总压缩率退化为有损层压缩率
@@ -199,11 +201,13 @@ public final class CompressionPipeline {
                     PartialDecoder.WindowResult bwr = new PartialDecoder().decodeWindow(bStore, q1, q2, cfg.precision);
                     bm.queryMs = (System.nanoTime() - bt0) / 1e6;
                     bm.partialBytesRatio = (double) bwr.bytesRead / bm.zippedBytes;
-                    int fullCount = 0;
+                    List<TrackPoint> fullWindow = new ArrayList<>();
                     for (TrackPoint p : bAll) {
-                        if (p.gtmEpoch >= q1 && p.gtmEpoch <= q2) fullCount++;
+                        if (p.gtmEpoch >= q1 && p.gtmEpoch <= q2) fullWindow.add(p);
                     }
-                    if (bwr.points.size() != fullCount) {
+                    if (!WindowResultVerifier.sameContent(bwr.points, fullWindow)
+                            || !WindowResultVerifier.sha256(bwr.points)
+                            .equals(WindowResultVerifier.sha256(fullWindow))) {
                         throw new IllegalStateException("基线部分解压不一致: " + bm.name + ", " + w.waybillNo);
                     }
                 }

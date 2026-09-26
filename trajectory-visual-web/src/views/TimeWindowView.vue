@@ -25,7 +25,7 @@
           <span class="hint-item"><b>分片时长</b>：每 {{ rangeInfo.blockWindowS }} 秒（{{ minutes(rangeInfo.blockWindowS) }} 分钟）一片，
             共 <b>{{ rangeInfo.chunkCount ?? '—' }}</b> 片</span>
           <span class="hint-item"><b>坐标系</b>：GCJ-02（与高德底图一致）</span>
-          <span class="hint-item"><b>检索口径</b>：窗口与分片时间跨度相交即命中该片，只读命中分片的压缩负载</span>
+          <span class="hint-item"><b>检索口径</b>：点结果来自命中分片；候选区间来自持久化元数据，两者分别返回</span>
         </template>
         <span v-else class="hint-item muted">选择运单后，这里会显示该运单的轨迹时间范围与分片时长（未压缩运单按默认分片时长展示，压缩后才生成实际分片）。</span>
       </div>
@@ -36,7 +36,7 @@
 
     <el-row :gutter="10">
       <el-col :span="13">
-        <el-card shadow="never" header="窗口内轨迹（部分解压返回，仅读取命中分片）" style="height: 520px">
+        <el-card shadow="never" header="窗口内保留点（命中分片解码）" style="height: 520px">
           <TrajectoryMap ref="mapRef" height="425px" />
         </el-card>
       </el-col>
@@ -57,18 +57,29 @@
                   <b>{{ result.hitChunks }}</b> / {{ result.totalChunks }}
                 </el-descriptions-item>
                 <el-descriptions-item label="分块命中率">{{ pct(result.blockHitRatio) }}</el-descriptions-item>
-                <el-descriptions-item label="读取字节 / 总字节">
+                <el-descriptions-item label="命中负载 / 全部负载字节">
                   <b>{{ result.bytesRead }}</b> / {{ result.totalBytes }}
                 </el-descriptions-item>
-                <el-descriptions-item label="部分读取字节比例">{{ pct(result.readRatio) }}</el-descriptions-item>
-                <el-descriptions-item label="部分解压耗时">{{ result.partialMs }} ms</el-descriptions-item>
-                <el-descriptions-item label="全量解压耗时">{{ result.fullMs }} ms</el-descriptions-item>
+                <el-descriptions-item label="命中负载字节比例">{{ pct(result.readRatio) }}</el-descriptions-item>
+                <el-descriptions-item label="命中块读取+解码耗时">{{ result.partialMs }} ms</el-descriptions-item>
+                <el-descriptions-item label="全量块读取+解码耗时">{{ result.fullMs }} ms</el-descriptions-item>
                 <el-descriptions-item label="窗口内点数（部分）">{{ result.partialPoints }}</el-descriptions-item>
                 <el-descriptions-item label="窗口内点数（全量过滤）">{{ result.fullPoints }}</el-descriptions-item>
               </el-descriptions>
+              <div class="muted" style="margin-top:8px">这是两条路径各自的读取与解码计时；当前验证接口仍会执行全量路径以核对结果，因此接口总耗时不能等同于“部分解压耗时”。计时不含预取分片元数据和随后内容校验；负载比例不含索引与候选元数据。</div>
+              <div style="margin-top:8px">点数一致：{{ result.pointCountConsistent ? '是' : '否' }}；字段及顺序一致：{{ result.contentConsistent ? '是' : '否' }}；SHA-256 一致：{{ result.digestConsistent ? '是' : '否' }}</div>
               <el-tag :type="result.consistent ? 'success' : 'danger'" size="large" style="margin-top:12px">
-                {{ result.consistent ? '✓ 部分解压与全量过滤结果一致' : '✗ 部分解压与全量过滤不一致！' }}
+                {{ result.consistent ? '✓ 点内容与顺序一致' : '✗ 点内容或顺序不一致！' }}
               </el-tag>
+              <div style="margin-top:12px"><b>相交候选区间（{{ result.candidateIntervals?.length || 0 }}）</b></div>
+              <div class="muted">区间交集是候选事件的时间范围，不代表窗口内每秒均有定位观测。</div>
+              <el-table v-if="result.candidateIntervals?.length" :data="result.candidateIntervals" size="small" max-height="145" style="margin-top:5px">
+                <el-table-column prop="seq" label="序号" width="55" />
+                <el-table-column prop="label" label="类型" width="80" />
+                <el-table-column label="观测边界 / 窗口交集" min-width="195">
+                  <template #default="{ row }">{{ epochTime(row.observedStartEpoch) }} ~ {{ epochTime(row.observedEndEpoch) }}<br />交集：{{ epochTime(row.overlapStartEpoch) }} ~ {{ epochTime(row.overlapEndEpoch) }}</template>
+                </el-table-column>
+              </el-table>
               <div class="perf" v-if="result.totalBytes">
                 <div class="perf-title">字节读取对比</div>
                 <el-progress :percentage="Math.round(result.readRatio * 100)" :stroke-width="18"
@@ -105,6 +116,7 @@ const rangeInfo = ref<any>({ start: '', end: '', blockWindowS: null, chunkCount:
 
 function pct(v?: number) { return v === undefined || v === null ? '-' : (v * 100).toFixed(1) + '%' }
 function minutes(s?: number) { return s ? (s / 60).toFixed(s % 60 === 0 ? 0 : 1) : '-' }
+function epochTime(s?: number) { return s == null ? '-' : dayjs.unix(s).format('YYYY-MM-DD HH:mm:ss') }
 
 async function loadWaybills() {
   const data = await getWaybillPage({ current: 1, size: 200 })

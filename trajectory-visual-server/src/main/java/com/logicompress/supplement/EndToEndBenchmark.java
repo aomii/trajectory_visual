@@ -43,7 +43,9 @@ public final class EndToEndBenchmark {
         double sumSed;
         double sumSr;
         double sumUnit;
-        double sumDwell;
+        int candidateWaybills;
+        double completeSpanSeconds;
+        double eligibleSpanSeconds;
         final List<Double> perWaybillCr = new ArrayList<>();
     }
 
@@ -84,8 +86,13 @@ public final class EndToEndBenchmark {
                 a.sumPed += e.avgPedM;
                 a.sumSed += e.avgSedM;
                 a.sumSr += Metrics.semanticRetention(c.semantic.anchors, kept);
-                a.sumUnit += Metrics.unitIntegrity(c.semantic.stops, mask);
-                a.sumDwell += Metrics.dwellFidelity(c.cleaned.points, c.semantic.stops, mask);
+                if (!c.semantic.stops.isEmpty()) {
+                    a.sumUnit += Metrics.unitIntegrity(c.semantic.stops, mask);
+                    a.candidateWaybills++;
+                }
+                Metrics.BoundarySpan span = Metrics.boundarySpanRetention(c.semantic.stops, mask);
+                a.completeSpanSeconds += span.completeSeconds;
+                a.eligibleSpanSeconds += span.eligibleSeconds;
             }
         }
 
@@ -108,8 +115,9 @@ public final class EndToEndBenchmark {
                             + SupplementTables.r2(percentile(a.perWaybillCr, 0.90)) + " / "
                             + SupplementTables.r2(percentile(a.perWaybillCr, 0.95)),
                     SupplementTables.r2(100.0 * a.sumSr / Math.max(1, a.waybills)),
-                    SupplementTables.r2(100.0 * a.sumUnit / Math.max(1, a.waybills)),
-                    SupplementTables.r2(100.0 * a.sumDwell / Math.max(1, a.waybills)),
+                    SupplementTables.r2(100.0 * a.sumUnit / Math.max(1, a.candidateWaybills)),
+                    a.eligibleSpanSeconds == 0 ? "—" : SupplementTables.r2(
+                            100.0 * a.completeSpanSeconds / a.eligibleSpanSeconds),
                     SupplementTables.r2(a.sumPed / Math.max(1, a.waybills)),
                     SupplementTables.r2(a.sumSed / Math.max(1, a.waybills)),
                     String.valueOf(a.blocks)
@@ -120,7 +128,8 @@ public final class EndToEndBenchmark {
                 "完整组合方案端到端对比（统一分块编码器，编码负载口径）",
                 "各方法从同一清洗轨迹出发；有损后均使用同一量化精度、1 h 分块、差分/5位分片和 DEFLATE。"
                         + "输入为清洗后完整点列的规范文本字节，输出为压缩块负载字节；"
-                        + "未计 MongoDB/BSON 文档与数据库索引开销。",
+                        + "未计 MongoDB/BSON 文档与数据库索引开销。候选单元完整率只对含候选的运单取宏均值；"
+                        + "观测跨度保持率按完整边界观测秒数全局加权，均为压缩内部指标（boundary-span-v2）。",
                 new String[]{"方法", "保留点数", "全局点数CR", "统一输入(B)", "编码负载(B)", "全局端到端CR",
                         "逐运单CR均值/中位", "逐运单CR P10/P25/P75/P90/P95",
                         "候选锚点SR(%)", "候选单元完整率(%)", "观测跨度保真度(%)",

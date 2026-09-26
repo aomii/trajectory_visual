@@ -8,6 +8,7 @@ import com.logicompress.experiment.eval.Metrics;
 import com.logicompress.experiment.model.TrackPoint;
 
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -18,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * 表 6-12 / 表 6-13：无损层规模与编码解码耗时基准。
@@ -32,7 +34,7 @@ public final class LosslessBenchmark {
 
     /** 表 6-12 的聚合容器 */
     private static final class SizeAgg {
-        long naiveBytes, zippedBytes, keptPoints, nClean, chunkCount;
+        long naiveBytes, zippedBytes, gzipWholeBytes, gzipBlockBytes, keptPoints, nClean, chunkCount;
         int n;
         /** 部分解压一致性校验：窗口内"部分解压取回点数 == 全量解压同窗口点数"的运单数 */
         int partialChecked, partialCountConsistent, partialFieldConsistent, partialHashConsistent;
@@ -61,6 +63,10 @@ public final class LosslessBenchmark {
             a.keptPoints += kept.size();
             a.naiveBytes += naive;
             a.zippedBytes += zipped;
+            a.gzipWholeBytes += gzipSize(Metrics.naiveAscii(keptPts, cfg.precision));
+            for (com.logicompress.experiment.model.EncodeBlock block : store.blocks) {
+                a.gzipBlockBytes += gzipSize(Metrics.naiveAscii(block.points, cfg.precision));
+            }
             a.chunkCount += store.blocks.size();
             if (zipped > 0) {
                 double crLossless = (double) naive / zipped;
@@ -89,6 +95,8 @@ public final class LosslessBenchmark {
                 + "（约 " + SupplementTables.r2((double) a.naiveBytes / Math.max(1, a.keptPoints)) + " B/点）"});
         rows.add(new String[]{"分块偏移量编码 + DEFLATE 后字节", String.format(Locale.ROOT, "%,d", a.zippedBytes)
                 + "（**" + SupplementTables.r2((double) a.zippedBytes / Math.max(1, a.keptPoints)) + " B/点**）"});
+        rows.add(new String[]{"规范文本整单 gzip 负载字节（无随机块访问）", String.format(Locale.ROOT, "%,d", a.gzipWholeBytes)});
+        rows.add(new String[]{"规范文本同分块 gzip 负载字节（不含索引）", String.format(Locale.ROOT, "%,d", a.gzipBlockBytes)});
         rows.add(new String[]{"无损层压缩率（全局合计字节口径）", "**" + SupplementTables.r2(ratio) + "×**"});
         rows.add(new String[]{"无损层压缩率（逐运单均值 / 中位）",
                 SupplementTables.r2(mean(a.crLossless)) + " / " + SupplementTables.r2(median(a.crLossless))});
@@ -104,12 +112,21 @@ public final class LosslessBenchmark {
         SupplementTables.both(outDir, "table6_12_lossless_summary",
                 "表 6-12 无损层压缩结果（" + a.n + " 运单合计，" + String.format(Locale.ROOT, "%,d", a.keptPoints) + " 点）",
                 "块长 " + cfg.blockWindowS + " s；朴素文本 = 六字段各按 " + cfg.precision
-                        + " 位小数格式化的 ASCII 文本字节，作为无损层压缩前基准。",
+                        + " 位小数格式化的 ASCII 文本字节，作为无损层压缩前基准。"
+                        + "gzip 对照为 Java GZIPOutputStream 默认级别；同分块版本沿用本文分块，均不含索引/BSON。",
                 new String[]{"指标", "数值"}, rows);
 
         System.out.printf(Locale.ROOT, "[表6-12] 完成：运单 %d，保留点 %,d，朴素 %,d B → 编码 %,d B（%.2f×，%.2f B/点），耗时 %.1fs%n",
                 a.n, a.keptPoints, a.naiveBytes, a.zippedBytes, ratio,
                 (double) a.zippedBytes / Math.max(1, a.keptPoints), (System.currentTimeMillis() - t0) / 1000.0);
+    }
+
+    private static long gzipSize(String text) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try (GZIPOutputStream gzip = new GZIPOutputStream(out)) {
+            gzip.write(text.getBytes(StandardCharsets.US_ASCII));
+        }
+        return out.size();
     }
 
     /** 表 6-13：编码/解码微基准（3 轮预热 + 30 轮，随机位置与 15/60/120 min 查询窗） */

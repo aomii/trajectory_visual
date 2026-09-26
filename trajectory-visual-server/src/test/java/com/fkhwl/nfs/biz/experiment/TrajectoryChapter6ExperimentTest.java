@@ -106,6 +106,14 @@ public class TrajectoryChapter6ExperimentTest {
         log.info("批次: {}", runNo);
     }
 
+    /** 定向补测 2 h/4 h 等块长，不重复 DP 容差扫描。 */
+    @Test
+    public void runBlockWindowSensitivityExperiment() {
+        log.info("== 分块时长敏感性（定向补测 7200s/14400s） ==");
+        String runNo = runner.runBlockWindowSensitivity();
+        log.info("批次: {}", runNo);
+    }
+
     /** 输出全量/子集范围和关键口径，避免误读运行参数。 */
     private void printBanner() {
         Path dir = Paths.get(vprops.getSource().getFullDataDir());

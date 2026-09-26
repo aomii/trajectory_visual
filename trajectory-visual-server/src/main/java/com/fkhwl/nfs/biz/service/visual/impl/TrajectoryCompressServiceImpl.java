@@ -18,6 +18,8 @@ import com.fkhwl.nfs.biz.mapper.TrajectoryWaybillMapper;
 import com.fkhwl.nfs.biz.service.visual.TrajectoryCompressService;
 import com.fkhwl.nfs.biz.util.CoordinateTransformUtil;
 import com.fkhwl.nfs.biz.util.TimeFmt;
+import com.fkhwl.nfs.biz.util.CandidateWindowSupport;
+import com.fkhwl.nfs.biz.util.WindowResultVerifier;
 import com.fkhwl.nfs.common.ApiException;
 import com.fkhwl.nfs.config.ExperimentProperties;
 import com.fkhwl.nfs.config.VisualProperties;
@@ -242,7 +244,7 @@ public class TrajectoryCompressServiceImpl implements TrajectoryCompressService 
         return m;
     }
 
-    /** 停留单元 → Mongo 视觉元数据（坐标 WGS84，起终锚点成对保留标记） */
+    /** 停留单元 → Mongo 视觉元数据（源坐标为 GCJ-02，起终锚点成对保留标记） */
     private List<TrajectoryChunkDoc.MongoStopUnit> toMongoStops(List<TrackPoint> cleaned,
                                                                  SemanticResult sem, boolean[] keptMask) {
         List<TrajectoryChunkDoc.MongoStopUnit> out = new ArrayList<>();
@@ -487,7 +489,7 @@ public class TrajectoryCompressServiceImpl implements TrajectoryCompressService 
                 double[] g2 = display(s.getEndLat(), s.getEndLon());
                 sv.startLon = g1[0]; sv.startLat = g1[1];
                 sv.endLon = g2[0]; sv.endLat = g2[1];
-                sv.retainedBoth = Boolean.TRUE.equals(s.getRetainedBoth());
+                sv.retainedBoth = CandidateWindowSupport.retainedBoundary(kept, s, precision);
                 vo.stays.add(sv);
             }
         }
@@ -694,7 +696,10 @@ public class TrajectoryCompressServiceImpl implements TrajectoryCompressService 
         long t2 = TimeFmt.strToSec(form.endTime);
         if (t2 < t1) throw new ApiException(400, "endTime 不能早于 startTime");
 
-        List<TrajectoryChunkDoc> all = chunkDocsOf(form.waybillId);
+        Query metadataQuery = Query.query(Criteria.where("waybillId").is(form.waybillId))
+                .with(Sort.by(Sort.Direction.ASC, "chunkIndex"));
+        metadataQuery.fields().exclude("compressedPayload");
+        List<TrajectoryChunkDoc> all = mongo.find(metadataQuery, TrajectoryChunkDoc.class);
         WindowSearchVO vo = new WindowSearchVO();
         vo.waybillId = form.waybillId;
         vo.t1 = TimeFmt.secToStr(t1);
@@ -727,24 +732,36 @@ public class TrajectoryCompressServiceImpl implements TrajectoryCompressService 
         window.sort((a, b) -> Long.compare(a.gtmEpoch, b.gtmEpoch));
         vo.hitChunks = hit.size();
         vo.bytesRead = hitBytes;
-        vo.totalBytes = all.stream().mapToLong(d -> d.getCompressedPayload() == null ? 0
-                : d.getCompressedPayload().length).sum();
-        vo.readRatio = vo.totalBytes <= 0 ? 0 : round4((double) hitBytes / vo.totalBytes);
         vo.blockHitRatio = vo.totalChunks <= 0 ? 0 : round4((double) hit.size() / vo.totalChunks);
         vo.partialPoints = window.size();
         vo.partialMs = Math.round((System.nanoTime() - t0) / 1e6 * 100.0) / 100.0;
 
-        // 全量解压对比（正确性基准 + 耗时对比）
+        // 全量读取与解码是独立的正确性基准；不计入上面的部分路径计时。
         long f0 = System.nanoTime();
-        int full = 0;
-        for (TrajectoryChunkDoc d : all) {
+        List<TrajectoryChunkDoc> allPayload = chunkDocsOf(form.waybillId);
+        List<TrackPoint> fullWindow = new ArrayList<>();
+        List<TrackPoint> fullTrack = new ArrayList<>();
+        for (TrajectoryChunkDoc d : allPayload) {
             for (TrackPoint p : decodeChunk(d, precision)) {
-                if (p.gtmEpoch >= t1 && p.gtmEpoch <= t2) full++;
+                fullTrack.add(p);
+                if (p.gtmEpoch >= t1 && p.gtmEpoch <= t2) fullWindow.add(p);
             }
         }
+        fullWindow.sort((a, b) -> Long.compare(a.gtmEpoch, b.gtmEpoch));
         vo.fullMs = Math.round((System.nanoTime() - f0) / 1e6 * 100.0) / 100.0;
-        vo.fullPoints = full;
-        vo.consistent = vo.partialPoints == vo.fullPoints;
+        vo.totalBytes = allPayload.stream().mapToLong(d -> d.getCompressedPayload() == null ? 0
+                : d.getCompressedPayload().length).sum();
+        vo.readRatio = vo.totalBytes <= 0 ? 0 : round4((double) hitBytes / vo.totalBytes);
+        vo.fullPoints = fullWindow.size();
+        vo.pointCountConsistent = vo.partialPoints == vo.fullPoints;
+        vo.contentConsistent = WindowResultVerifier.sameContent(window, fullWindow);
+        vo.partialSha256 = WindowResultVerifier.sha256(window);
+        vo.fullSha256 = WindowResultVerifier.sha256(fullWindow);
+        vo.digestConsistent = vo.partialSha256.equals(vo.fullSha256);
+        vo.consistent = vo.contentConsistent && vo.digestConsistent;
+
+        TrajectoryChunkDoc first = all.get(0);
+        vo.candidateIntervals = CandidateWindowSupport.intersect(first.getStopUnits(), t1, t2, fullTrack, precision);
 
         // 展示点：源坐标即 GCJ-02，直接返回（见 trajectory.coord.source-already-gcj02）
         for (TrackPoint p : window) {
@@ -757,7 +774,6 @@ public class TrajectoryCompressServiceImpl implements TrajectoryCompressService 
             gp.spd = p.spdKph;
             vo.points.add(gp);
         }
-        TrajectoryChunkDoc first = all.get(0);
         vo.waybillNo = first.getWaybillNo();
         // 分片时长与轨迹时间范围：给前端"顶部提示"用（时间范围是多少、一片多少秒）
         vo.blockWindowS = first.getBlockWindowS() == null ? eprops.getBlockWindowS() : first.getBlockWindowS();
@@ -790,7 +806,7 @@ public class TrajectoryCompressServiceImpl implements TrajectoryCompressService 
                 TrajectoryChunkDoc.class);
     }
 
-    /** 解码单个分片负载（DEFLATE → ASCII → 本文分块解码），坐标保持 WGS84 */
+    /** 解码单个分片负载（DEFLATE → ASCII → 本文分块解码），坐标保持源 GCJ-02 */
     private List<TrackPoint> decodeChunk(TrajectoryChunkDoc d, int precision) {
         byte[] payload = d.getCompressedPayload();
         if (payload == null || payload.length == 0) return new ArrayList<>();
