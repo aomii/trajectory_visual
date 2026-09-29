@@ -62,9 +62,7 @@ public class Chapter6ExperimentRunner {
     static {
         ALG_NAMES.put("PROPOSED", "本文方法");
         ALG_NAMES.put("DP", "道格拉斯-普克(DP)");
-        ALG_NAMES.put("DPS", "DP＋转角回插启发式(DPS代码)");
         ALG_NAMES.put("TD-TR", "时间同步(TD-TR)");
-        ALG_NAMES.put("Trajic", "线性预测抽稀(Trajic代码)");
     }
 
     private final TrajectoryEvalRunMapper runMapper;
@@ -258,8 +256,8 @@ public class Chapter6ExperimentRunner {
     // ------------------------------------------------------------------
 
     /**
-     * 主实验：每个运单跑完整链路（有损+无损+部分解压+基线），把本文与 4 种基线
-     * 的 CR/PED/SED/SR/语义指标/字节/耗时写入 algorithm_result 与 waybill_result。
+     * 主实验：每个运单跑完整链路（有损+无损+部分解压+基线），把本文与 2 种基线
+     * 的 CR/PED/SED/SR/候选结构内部保持指标/字节/耗时写入 algorithm_result 与 waybill_result。
      * 对应论文 6.3~6.5 的数据主体与表 6-6/6-7/6-12。
      */
     public String runLossyCompressionCompare() {
@@ -296,7 +294,7 @@ public class Chapter6ExperimentRunner {
                     recordError(run, exp, no, f, e);
                 }
             }
-            // 按算法聚合（本文 + 4 基线）
+            // 按算法聚合（本文 + DP、TD-TR）
             persistAlgorithmRow(run.getId(), aggregateProposed(proposed, ok, rawTotal));
             for (String c : CompressionPipeline.BASELINE_CODES) {
                 persistAlgorithmRow(run.getId(), aggregateBaseline(proposed, c, ok, rawTotal));
@@ -693,7 +691,7 @@ public class Chapter6ExperimentRunner {
                 ExperimentConfig cfg = ExperimentConfigs.from(props);
                 cfg.dpEpsNonKeyM = tol;
                 cfg.baselineDpM = tol;
-                // DP 容差扫描关注有损层 CR/SR 随容差的变化，跑无损+4基线；部分解压指标对容差不敏感故不测
+                // DP 容差扫描关注有损层 CR/SR 随容差的变化，跑无损+2基线；部分解压指标对容差不敏感故不测
                 List<PipelineOutcome> os = rerunLosslessBaselines(files, cfg, exp, run);
                 // 本文行
                 persistParamSlim(run, "dp_tolerance", fmt(tol), "PROPOSED", os);

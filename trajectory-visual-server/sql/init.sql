@@ -75,7 +75,7 @@ DROP TABLE IF EXISTS trajectory_eval_algorithm_result;
 CREATE TABLE trajectory_eval_algorithm_result (
   id                           BIGINT   NOT NULL AUTO_INCREMENT,
   run_id                       BIGINT   NOT NULL,
-  algorithm_code               VARCHAR(32) COMMENT 'PROPOSED/DP/DPS/TD-TR/Trajic',
+  algorithm_code               VARCHAR(32) COMMENT 'PROPOSED/DP/TD-TR',
   algorithm_name               VARCHAR(64),
   parameter_json               TEXT,
   waybill_count                INT,

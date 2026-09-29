@@ -24,7 +24,7 @@ import java.util.Map;
 /**
  * 补充实验【手动运行】入口 —— 产出论文第 6 章里主实验覆盖不到的那几张表。
  *
- * <p>结果默认写到模块的 {@code src/main/resources/export/supplement/}，可用
+ * <p>结果默认写到模块的 {@code target/supplement/}（包含逐运单明细，不纳入版本库），可用
  * {@code -Dsupplement.outDir=<本机输出目录>} 覆盖；每张表同时给 {@code .csv} 和 {@code .md}。
  *
  * <p><b>产出的表 ↔ 论文表号</b>
@@ -47,11 +47,11 @@ import java.util.Map;
  *
  * <p><b>运行方式</b>
  * <ul>
- *   <li>IDEA：右键本类（或某个方法）→ Run</li>
+ *   <li>IDEA：运行 {@code runAllSupplementExperiments} 方法</li>
  *   <li>命令行：
  * <pre>
  *   mvn -s D:\develop\apache-maven-3.8.2\conf\settings-tuling.xml ^
- *       -o test -Dtest=SupplementExperimentTest
+ *       -o -Dtest=SupplementExperimentTest#runAllSupplementExperiments test
  * </pre>
  *   </li>
  * </ul>
@@ -64,7 +64,7 @@ public class SupplementExperimentTest {
 
     /** 导出目录（相对模块根；绝对路径见类注释）。可用 -Dsupplement.outDir=... 覆盖 */
     private static final Path OUT_DIR = Paths.get(
-            System.getProperty("supplement.outDir", "src/main/resources/export/supplement"));
+            System.getProperty("supplement.outDir", "target/supplement"));
 
     /**
      * 运单上限（&lt;=0 全部）。试跑用：{@code -Dsupplement.limit=200}。
@@ -113,6 +113,16 @@ public class SupplementExperimentTest {
         List<SupplementContext.WaybillCtx> ctxs =
                 SupplementContext.load(buildConfig(), sourceDir(), loadMeta(), limit());
         LosslessBenchmark.runSize(buildConfig(), ctxs, OUT_DIR);
+        listExported();
+    }
+
+    /** 单独复测表 6-13 与表 6-18 的耗时；全量实验仍从 runAllSupplementExperiments 进入。 */
+    @Test
+    public void runTimedMicrobenchmarks() throws Exception {
+        List<SupplementContext.WaybillCtx> ctxs =
+                SupplementContext.load(buildConfig(), sourceDir(), loadMeta(), limit());
+        LosslessBenchmark.runBench(buildConfig(), ctxs, OUT_DIR);
+        RandomWindowBenchmark.run(buildConfig(), ctxs, OUT_DIR);
         listExported();
     }
 

@@ -44,13 +44,15 @@ export const getCompressTask = (taskId: string) =>
   request<any>({ method: 'get', url: `/api/visual/trajectory/compress-task/${taskId}` })
 export const searchByTime = (body: any) =>
   request<any>({ method: 'post', url: '/api/visual/trajectory/search-by-time', data: body })
-/** 单运单 × 各算法保留轨迹（对比页地图下钻）：本文 + DP/DPS/TD-TR/Trajic，本文另带停留单元 */
+/** 单运单 × 各算法保留轨迹（对比页地图下钻）：本文 + DP/TD-TR，本文另带候选单元 */
 export const getAlgorithmTracks = (waybillId: number) =>
   request<any>({ method: 'get', url: `/api/visual/trajectory/algorithm-tracks/${waybillId}` })
 
 // ---------------- 评估（页面三/四/五） ----------------
 export const getEvalRuns = () =>
   request<any[]>({ method: 'get', url: '/api/visual/evaluation/runs' })
+export const getEvalResultSources = () =>
+  request<any>({ method: 'get', url: '/api/visual/evaluation/result-sources' })
 export const getDashboard = (runId?: number) =>
   request<any>({ method: 'get', url: '/api/visual/evaluation/dashboard', params: { runId } })
 export const getEvalSummary = (runId?: number) =>

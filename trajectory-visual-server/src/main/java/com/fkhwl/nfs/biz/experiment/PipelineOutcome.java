@@ -77,7 +77,7 @@ public class PipelineOutcome {
 
     /** 单个基线结果（与本文共用 Metrics 口径） */
     public static class Baseline {
-        public String name;             // DP / DPS / TD-TR / Trajic
+        public String name;             // DP / TD-TR
         public int nKept;
         public double crLossy;
         public double crLossless;

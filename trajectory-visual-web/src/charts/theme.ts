@@ -4,9 +4,7 @@ import * as echarts from 'echarts'
 export const COLOR = {
   PROPOSED: '#0d5ea7', // 本文方法：深蓝强调
   DP: '#9db4c8',
-  DPS: '#6f9e7a',
   'TD-TR': '#b58a5a',
-  Trajic: '#9a7fb0',
   semantic: '#2e9e63', // 语义保真：绿
   error: '#d96a3c', // 误差/耗时：橙红
   accent: '#c8a24b'
@@ -15,9 +13,7 @@ export const COLOR = {
 export const ALG_NAMES: Record<string, string> = {
   PROPOSED: '本文方法',
   DP: 'DP',
-  DPS: 'DP＋转角回插（DPS代码）',
   'TD-TR': 'TD-TR',
-  Trajic: '线性预测抽稀（Trajic代码）'
 }
 
 /**

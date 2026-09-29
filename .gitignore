@@ -1,0 +1,8 @@
+# Full-run outputs can contain business waybill identifiers or local database records.
+experiments/**/supplement/
+experiments/**/synthetic/
+experiments/**/db_export/
+experiments/**/old_batches_archive/
+experiments/**/*.log
+experiments/**/refs_crossref_audit.txt
+trajectory-visual-server/src/main/resources/export/supplement/

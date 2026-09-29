@@ -18,10 +18,10 @@ import java.util.Map;
  * <ul>
  *   <li>表 6-7  静态同坐标合并 vs ST-DBSCAN 选型对比 → {@link StopRecognitionCompare}</li>
  *   <li>表 6-12 无损层压缩结果（朴素字节/编码后字节/压缩率） → {@link LosslessBenchmark#runSize}</li>
- *   <li>表 6-13 编码/解码耗时基准（1 轮预热 + 5 轮） → {@link LosslessBenchmark#runBench}</li>
+ *   <li>表 6-13 编码/解码耗时基准（3 轮预热 + 30 轮） → {@link LosslessBenchmark#runBench}</li>
  *   <li>表 6-14 偏移量经验熵 vs 编码后字节率 → {@link EntropyBenchmark}</li>
- *   <li>表 6-16 块长权衡曲线 → {@link BlockLengthSweep}</li>
- *   <li>表 6-18 凸包保形度与压缩失真速度比 → {@link HullShapeBenchmark}</li>
+ *   <li>表 6-17 块长权衡曲线 → {@link BlockLengthSweep}</li>
+ *   <li>表 6-21 凸包保形度与重建边超阈值比例 → {@link HullShapeBenchmark}</li>
  *   <li>完整组合方案统一编码对比 → {@link EndToEndBenchmark}</li>
  *   <li>P1 候选停留单元参数敏感性 → {@link P1SensitivityBenchmark}</li>
  *   <li>同候选边界的 TD-TR、DP+独立候选元数据近邻对照 → {@link NearNeighborBenchmark}</li>

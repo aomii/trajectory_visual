@@ -44,8 +44,8 @@ trajectory:
 
   # ---- 第 6 章实验参数（默认口径，覆盖 04实验 ExperimentConfig 的默认值） ----
   experiment:
-    # 【用户 2026-09-09 定稿】本文移动段 DP 容差与 DP/DPS/TD-TR/Trajic 基线统一取 10m，
-    # 保证公平对比。注意：与 claude_15 论文现稿“本文15m/基线10m”不一致，重跑后论文数字需回填。
+    # 本文移动段、DP 与 TD-TR 基线统一使用 10m 米制容差；
+    # 另以相近全局保留点数/编码字节预算比较，避免只用固定容差解释优劣。
     dp-move-tolerance-m: 10
     baseline-tolerance-m: 10
     # 消融“收紧移动段容差”档：本文主线已是 10m，与论文原“A-收紧至10m”重合，

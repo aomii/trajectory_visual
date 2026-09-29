@@ -1,17 +1,20 @@
 <template>
   <div>
+    <el-alert type="info" :closable="false" class="mb8">
+      <template #title>结果来源：消融 {{ sourceLabel(sources.ablation) }}；容差扫描 {{ sourceLabel(sources.parameter) }}；块长扫描 {{ sourceLabel(sources.blockWindow) }}。各图仅使用其标明批次的结果。</template>
+    </el-alert>
     <el-card shadow="never" class="mb8" header="消融实验（A0 完整方法 / A-TIGHT 收紧容差 / A2 去锚点 / A3 去无损 / A4 去分块索引）">
       <el-row :gutter="10">
         <el-col :span="14">
           <div ref="elAbA" style="height: 300px"></div>
-          <div class="note">左轴 CR_total（×），右轴 SR / 语义单元完整率（%）。A2 去锚点后语义指标骤降；A4 整流编码压缩最高但失去按块随机访问（见下表查询耗时）。</div>
+          <div class="note">左轴 CR_total（×），右轴 SR / 候选单元完整率（%）。缺失指标留空；A4 整流编码不支持按块随机访问。</div>
         </el-col>
         <el-col :span="10">
           <el-table :data="ablationRows" size="small" border>
             <el-table-column prop="ablationCode" label="变体" width="90" />
             <el-table-column label="CR_total"><template #default="{ row }">{{ num(row.crTotalAvg, 2) }}</template></el-table-column>
             <el-table-column label="SR"><template #default="{ row }">{{ row.srAvg == null ? '-' : pct(row.srAvg) }}</template></el-table-column>
-            <el-table-column label="单元完整率"><template #default="{ row }">{{ row.semanticUnitCompleteRate == null ? '-' : pct(row.semanticUnitCompleteRate) }}</template></el-table-column>
+            <el-table-column label="候选单元完整率"><template #default="{ row }">{{ row.semanticUnitCompleteRate == null ? '-' : pct(row.semanticUnitCompleteRate) }}</template></el-table-column>
             <el-table-column label="查询耗时"><template #default="{ row }">{{ row.queryTimeMsAvg == null ? '-' : num(row.queryTimeMsAvg, 3) + 'ms' }}</template></el-table-column>
           </el-table>
           <div class="note" v-if="ablRemarks.length">备注：{{ ablRemarks.join('；') }}</div>
@@ -39,11 +42,12 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getAblation, getParamSensitivity, getTrackConfig } from '../api'
+import { getAblation, getEvalResultSources, getParamSensitivity, getTrackConfig } from '../api'
 import { ALG_NAMES, COLOR, colorOf, createChart, disposeChart, setOption } from '../charts/theme'
 import { fmtNum } from '../utils/format'
 
 const ablationRows = ref<any[]>([])
+const sources = ref<any>({})
 const dpRows = ref<any[]>([])
 const blkRows = ref<any[]>([])
 const ablRemarks = ref<string[]>([])
@@ -54,6 +58,7 @@ let charts: any = {}
 
 function num(v: any, d = 2) { return v == null ? '-' : fmtNum(v, d) }
 function pct(v: any) { return v == null ? '-' : (v * 100).toFixed(1) + '%' }
+function sourceLabel(v: any) { return v ? `${v.runNo}（ID ${v.id}）` : '暂无成功批次' }
 /** 秒 → 块长标签：3600→"1h"、600→"10min" */
 function blockLabel(sec?: number | null) {
   if (!sec) return '—'
@@ -66,11 +71,16 @@ function ensure(key: string, el: any) {
 
 async function load() {
   try {
-    ablationRows.value = await getAblation()
+    sources.value = await getEvalResultSources()
+    ablationRows.value = sources.value?.ablation ? await getAblation(sources.value.ablation.id) : []
     ablRemarks.value = ablationRows.value.map((a: any) => a.remark).filter(Boolean)
-    const ps: any = await getParamSensitivity()
-    dpRows.value = ps?.dpTolerance || []
-    blkRows.value = ps?.blockWindow || []
+    const parameter: any = sources.value?.parameter
+      ? await getParamSensitivity(sources.value.parameter.id) : null
+    const block: any = sources.value?.blockWindow?.id === sources.value?.parameter?.id
+      ? parameter : sources.value?.blockWindow
+        ? await getParamSensitivity(sources.value.blockWindow.id) : null
+    dpRows.value = parameter?.dpTolerance || []
+    blkRows.value = block?.blockWindow || []
     // 默认分片时长从后端配置取（与 Mongo 分片口径同源），不在前端写死
     try { defBlockLabel.value = blockLabel((await getTrackConfig())?.blockWindowS) } catch (e) { /* 拿不到就显示 — */ }
     draw()
@@ -84,13 +94,13 @@ function draw() {
   if (ablationRows.value.length && elAbA.value) {
     const rows = ablationRows.value
     const names = rows.map((a: any) => a.ablationCode)
-    const cr = rows.map((a: any) => a.crTotalAvg ?? 0)
-    const sr = rows.map((a: any) => (a.srAvg ?? 0) * 100)
-    const ui = rows.map((a: any) => (a.semanticUnitCompleteRate ?? 0) * 100)
+    const cr = rows.map((a: any) => a.crTotalAvg == null ? null : Number(a.crTotalAvg))
+    const sr = rows.map((a: any) => a.srAvg == null ? null : Number(a.srAvg) * 100)
+    const ui = rows.map((a: any) => a.semanticUnitCompleteRate == null ? null : Number(a.semanticUnitCompleteRate) * 100)
     setOption(ensure('ab', elAbA), {
       color: [COLOR.PROPOSED, COLOR.semantic, '#b0c975'],
       tooltip: { trigger: 'axis' },
-      legend: { bottom: 0, data: ['CR_total', 'SR', '语义单元完整率'] },
+      legend: { bottom: 0, data: ['CR_total', 'SR', '候选单元完整率'] },
       grid: { left: 16, right: 44, top: 20, bottom: 30, containLabel: true },
       xAxis: { type: 'category', data: names, axisLabel: { color: '#334155' } },
       yAxis: [
@@ -98,9 +108,9 @@ function draw() {
         { type: 'value', name: '%', axisLabel: { color: '#334155', formatter: '{value}%' } }
       ],
       series: [
-        { name: 'CR_total', type: 'bar', data: cr.map((v) => +v.toFixed(1)), barWidth: 34, itemStyle: { color: COLOR.PROPOSED }, label: { show: true, position: 'top', formatter: (p: any) => p.value } },
-        { name: 'SR', type: 'line', yAxisIndex: 1, data: sr.map((v) => +v.toFixed(1)), symbolSize: 7 },
-        { name: '语义单元完整率', type: 'line', yAxisIndex: 1, data: ui.map((v) => +v.toFixed(1)), symbolSize: 7 }
+        { name: 'CR_total', type: 'bar', data: cr.map((v) => v == null ? null : +v.toFixed(1)), barWidth: 34, itemStyle: { color: COLOR.PROPOSED }, label: { show: true, position: 'top', formatter: (p: any) => p.value ?? '—' } },
+        { name: 'SR', type: 'line', yAxisIndex: 1, data: sr.map((v) => v == null ? null : +v.toFixed(1)), symbolSize: 7 },
+        { name: '候选单元完整率', type: 'line', yAxisIndex: 1, data: ui.map((v) => v == null ? null : +v.toFixed(1)), symbolSize: 7 }
       ]
     })
   }

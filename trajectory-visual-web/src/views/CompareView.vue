@@ -123,7 +123,7 @@ import TrajectoryMap from '../components/TrajectoryMap.vue'
 const metricKey = ref('crE2eGlobal')
 const chartType = ref('bar')
 const algorithms = ref<any[]>([])
-const checkedAlgs = ref<string[]>(['PROPOSED', 'DP', 'DPS', 'TD-TR', 'Trajic'])
+const checkedAlgs = ref<string[]>(['PROPOSED', 'DP', 'TD-TR'])
 const elChart = ref<HTMLDivElement>()
 let chart: any = null
 

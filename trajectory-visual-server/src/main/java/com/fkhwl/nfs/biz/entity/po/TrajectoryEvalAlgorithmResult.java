@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 
 /**
  * 一次实验批次下、每种算法的聚合指标（对应 SQL: trajectory_eval_algorithm_result）。
- * algorithm_code：PROPOSED(本文) / DP / DPS / TD-TR / Trajic。
+ * algorithm_code：PROPOSED(本文) / DP / TD-TR。
  */
 @Data
 @TableName("trajectory_eval_algorithm_result")

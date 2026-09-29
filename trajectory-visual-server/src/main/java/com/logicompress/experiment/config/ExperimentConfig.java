@@ -72,7 +72,8 @@ public class ExperimentConfig {
     public double dpEpsKeyM = 10.0;
     /**
      * 非关键段（移动段）DP 容差，米。
-     * 与 {@code trajectory.experiment.dp-move-tolerance-m} 保持一致（本文与 DP/DPS/TD-TR/Trajic 基线同容差公平对比）。
+     * 与 {@code trajectory.experiment.dp-move-tolerance-m} 保持一致；DP 垂距和 TD-TR
+     * 同步距离虽都以米计，阈值数值相同并不表示两者误差预算等价。
      */
     public double dpEpsNonKeyM = 10.0;
     /** 纯 DP 基线容差，米（对齐公司生产默认） */

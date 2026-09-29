@@ -26,7 +26,7 @@ import java.nio.file.Paths;
  * 运单范围受 trajectory.experiment.waybill-limit / waybill-offset 约束（-1=全部）。
  * 每个方法生成一个 trajectory_eval_run 批次并把结果写 MySQL；逐运单失败写 error_record，不中断整批。
  *
- * <p>【口径】DP 容差统一 10m（2026-09-09 用户定稿）：本文移动段与 DP/DPS/TD-TR/Trajic 基线一致。
+ * <p>【口径】米制容差统一 10m：本文移动段与 DP、TD-TR 基线一致。
  * 运行前请确认本地 MySQL 已建表（sql/init.sql）与源目录存在。
  *
  * <p>运行方式（激活 local profile）：
@@ -56,10 +56,10 @@ public class TrajectoryChapter6ExperimentTest {
         runner.runAllExperiments();
     }
 
-    /** 6.2 语义识别结果与分析：静态同坐标停留识别聚合（停留单元数/REST分布/锚点数） */
+    /** 6.2 候选停留单元生成：静态近同位置合并的输出数量、时长分组与锚点数。 */
     @Test
     public void runStopRecognitionExperiment() {
-        log.info("== 6.2 语义识别（静态同坐标停留） ==");
+        log.info("== 6.2 候选停留单元生成（静态近同位置合并） ==");
         String runNo = runner.runStopRecognition();
         log.info("批次: {}", runNo);
     }
@@ -81,19 +81,19 @@ public class TrajectoryChapter6ExperimentTest {
         log.info("批次: {}", runNo);
     }
 
-    /** 6.5 时间索引与部分解压（独立复跑批次） */
+    /** 6.6 时间索引与部分解压（独立复跑批次） */
     @Test
     public void runPartialDecompressionExperiment() {
         printBanner();
-        log.info("== 6.5 时间索引与部分解压 ==");
+        log.info("== 6.6 时间索引与部分解压 ==");
         String runNo = runner.runPartialDecompression();
         log.info("批次: {}", runNo);
     }
 
-    /** 6.6.1 消融实验：A0 / A-TIGHT / A2 / A3 / A4 */
+    /** 6.7.1 消融实验：A0 / A-TIGHT / A2 / A3 / A4 */
     @Test
     public void runAblationExperiment() {
-        log.info("== 6.6 消融实验 ==");
+        log.info("== 6.7 消融实验 ==");
         String runNo = runner.runAblation();
         log.info("批次: {}", runNo);
     }

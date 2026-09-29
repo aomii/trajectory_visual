@@ -41,6 +41,12 @@ public class VisualEvaluationController {
         return Result.ok(svc.runs());
     }
 
+    @Operation(summary = "消融、参数及块长图表的最新有效实验批次")
+    @GetMapping("/result-sources")
+    public Result<Map<String, TrajectoryEvalRun>> resultSources() {
+        return Result.ok(svc.resultSources());
+    }
+
     @Operation(summary = "最近成功批次指标汇总")
     @GetMapping("/summary")
     public Result<Map<String, Object>> summary(@RequestParam(required = false) Long runId) {

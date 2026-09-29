@@ -66,16 +66,14 @@
   以 `-Dtrajectory.experiment.waybill-limit=50` 可切换为子集试跑。
 - MyBatis SQL 打印已默认关闭（`application.yml` 的 `log-impl`），否则每条 INSERT 会刷爆控制台。
 
-## 关键口径（2026-09-09 用户定稿，覆盖论文现稿）
+## 关键口径（2026-09-29）
 
-- **DP 容差统一 10m**：本文移动段与 DP/DPS/TD-TR/Trajic 基线一致（公平对比）。与 claude_15
-  现稿"本文 15m / 基线 10m"不一致 → 本系统重跑出的第 6 章数字需另行回填论文表。
-- **端到端口径统一**：本文与 DP/DPS/TD-TR/Trajic 的有损输出全部进入同一分块偏移量编码器，
+- **对比方法**：仅保留本文、纯 DP 与 TD-TR。本文移动段和纯 DP 采用 10 m 垂距容差；TD-TR 采用 10 m 同步欧氏距离阈值，数值相同不等于误差预算相同。
+- **端到端口径统一**：三种方法的有损输出全部进入同一分块偏移量编码器，
   以清洗后完整点列规范文本总字节 / 编码负载总字节计算全局端到端压缩率；`CR_total`
   只保留为逐运单内部诊断指标，不再与只有有损层的基线混比。
-- 算法核心来自 `04实验`（com.logicompress.experiment）**verbatim 移植**，保证数字可复现；
-  本文、DP/DPS/TD-TR/Trajic 四基线全部完整实现（无 not_available）。
-- 数据源 7709 在线库；与论文第 6 章 152 运单实验集非同一批，故结果数字≠论文表 6-*（预期行为，用户已确认）。
+- 企业全量实验集合并两批数据，纳入 5,224 运单、4,280,695 个清洗点；第 6 章以本集合为准。
+- 主实验统一从 `TrajectoryChapter6ExperimentTest#runAllExperiments` 入库；补充表格从 `SupplementExperimentTest#runAllSupplementExperiments` 导出。消融、容差扫描与块长扫描各有独立批次，前端显示实际来源。
 
 ## 本地验证结果（2026-09-09）
 

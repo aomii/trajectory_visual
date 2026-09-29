@@ -49,7 +49,7 @@ public interface TrajectoryCompressService {
     Map<String, Object> trackConfig();
 
     /**
-     * 单运单 × 各算法的**保留轨迹**（本文 + DP/DPS/TD-TR/Trajic），供对比页地图下钻：
+     * 单运单 × 各算法的**保留轨迹**（本文 + DP/TD-TR），供对比页地图下钻：
      * 同一运单下各算法最终保留的点叠加在一起，直观呈现"压缩差异"；本文额外返回停留单元
      * （含各单元的起止时间与停留时长），供图上标注。
      */

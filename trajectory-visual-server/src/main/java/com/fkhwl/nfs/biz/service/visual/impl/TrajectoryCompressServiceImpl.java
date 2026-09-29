@@ -23,11 +23,9 @@ import com.fkhwl.nfs.biz.util.WindowResultVerifier;
 import com.fkhwl.nfs.common.ApiException;
 import com.fkhwl.nfs.config.ExperimentProperties;
 import com.fkhwl.nfs.config.VisualProperties;
-import com.logicompress.experiment.baseline.Dps;
 import com.logicompress.experiment.baseline.LossyBaseline;
 import com.logicompress.experiment.baseline.PlainDp;
 import com.logicompress.experiment.baseline.TdTr;
-import com.logicompress.experiment.baseline.Trajic;
 import com.logicompress.experiment.clean.CleanedTrack;
 import com.logicompress.experiment.clean.DriftFilter;
 import com.logicompress.experiment.compress.SegmentedDp;
@@ -587,8 +585,8 @@ public class TrajectoryCompressServiceImpl implements TrajectoryCompressService 
         // 本文：静止段锚点强制保留 + 移动段 DP
         List<Integer> ours = new SegmentedDp().compress(cleaned, sem, cfg);
         algs.add(algTrack("PROPOSED", "本文方法", cleaned, ours, sem, true));
-        // 四条几何基线：同一清洗轨迹、同一容差
-        LossyBaseline[] baselines = {new PlainDp(), new Dps(), new TdTr(), new Trajic()};
+        // 两条有损基线：同一清洗轨迹、同一米制容差
+        LossyBaseline[] baselines = {new PlainDp(), new TdTr()};
         for (int i = 0; i < baselines.length; i++) {
             List<Integer> bk = baselines[i].compress(cleaned, cfg.baselineDpM);
             algs.add(algTrack(CompressionPipeline.BASELINE_CODES[i],

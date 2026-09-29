@@ -89,7 +89,7 @@
         <el-col :span="14">
           <el-card shadow="never" :header="'chunk 时长权衡：压缩率 / 部分读取字节比例（标出默认 ' + blockLabel(defBlockWindowS) + '）'" style="height: 320px">
             <div ref="elStorage" class="chart-box" style="height: 260px"></div>
-            <div class="axis-note">{{ data?.storageQueryComparison?.series?.length ? '本批次分块时长扫描：CR_total为内部组合指标，部分读取字节比例为命中负载/全部负载。' : '当前批次没有分块时长扫描；不混用其他批次结果。' }}</div>
+            <div class="axis-note">{{ data?.storageQueryComparison?.series?.length ? '块长扫描来源：' + (data?.storageQueryComparison?.sourceRun?.runNo || run?.runNo) + '（ID ' + (data?.storageQueryComparison?.sourceRun?.id || run?.id) + '）。CR_total为内部组合指标，读取比例为命中负载/全部负载。' : '没有可用的分块时长扫描批次。' }}</div>
           </el-card>
         </el-col>
         <el-col :span="10">
@@ -110,7 +110,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import html2canvas from 'html2canvas'
-import { getDashboard, getEvalRuns } from '../api'
+import { getDashboard, getEvalResultSources, getEvalRuns } from '../api'
 import { ALG_NAMES, COLOR, colorOf, createChart, disposeChart, setOption } from '../charts/theme'
 import { METRIC_META, downloadText, fmtInt, fmtNum, fmtPct, toCSV, nowTag } from '../utils/format'
 
@@ -197,6 +197,16 @@ async function loadRuns() {
 async function loadData() {
   try {
     data.value = await getDashboard(runId.value ?? undefined)
+    const sources = await getEvalResultSources()
+    const blockSource = sources?.blockWindow
+    if (blockSource?.id != null) {
+      const blockData = blockSource.id === data.value?.run?.id
+        ? data.value : await getDashboard(blockSource.id)
+      data.value.storageQueryComparison = {
+        ...blockData.storageQueryComparison,
+        sourceRun: blockData.run
+      }
+    }
     // 后端解析出的实际批次回填下拉框，让用户看得到当前是哪一批
     if (data.value?.run?.id != null) runId.value = data.value.run.id
     await nextTick()

@@ -74,11 +74,11 @@ mvn -s D:\develop\apache-maven-3.8.2\conf\settings-tuling.xml spring-boot:run -D
 每个实验一个 @Test，并含总入口 `runAllExperiments()`：
 
 - `runStopRecognitionExperiment` → 6.2（静态同坐标停留识别聚合，写 run.remark）
-- `runLossyCompressionCompareExperiment` → **多算法主实验**（层次一比较有损指标；层次三把本文 + DP/DPS/TD-TR/Trajic 全部接入同一编码器，写端到端负载指标）
+- `runLossyCompressionCompareExperiment` → **多算法主实验**（层次一比较有损指标；层次三把本文、DP、TD-TR 全部接入同一编码器，写端到端负载指标）
 - `runLosslessEncodingExperiment` → 6.4（PROPOSED 无损层独立批次）
 - `runPartialDecompressionExperiment` → 6.5（PROPOSED 部分解压独立批次）
 - `runAblationExperiment` → 6.6.1（A0 / A-TIGHT / A2 / A3 / A4 → trajectory_eval_ablation_result）
-- `runParameterSensitivityExperiment` → DP 容差扫描 5/10/15/20/30 + chunk 时长扫描 300/600/1800/3600 → trajectory_eval_param_result
+- `runParameterSensitivityExperiment` → DP 容差扫描 5/10/15/20/30 m + chunk 时长扫描 300/600/1800/3600/7200/14400 s → trajectory_eval_param_result
 
 单测运行示例（先设好运单范围）：
 

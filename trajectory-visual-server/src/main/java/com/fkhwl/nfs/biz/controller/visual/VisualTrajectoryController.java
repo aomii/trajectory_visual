@@ -53,7 +53,7 @@ public class VisualTrajectoryController {
         return Result.ok(service.trackConfig());
     }
 
-    @Operation(summary = "单运单 × 各算法保留轨迹（对比页地图下钻：本文 + DP/DPS/TD-TR/Trajic）")
+    @Operation(summary = "单运单 × 各算法保留轨迹（对比页地图下钻：本文 + DP/TD-TR）")
     @GetMapping("/algorithm-tracks/{waybillId}")
     public Result<Map<String, Object>> algorithmTracks(@PathVariable Long waybillId) {
         return Result.ok(service.algorithmTracksOf(waybillId));

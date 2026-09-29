@@ -1,10 +1,8 @@
 package com.logicompress.supplement;
 
-import com.logicompress.experiment.baseline.Dps;
 import com.logicompress.experiment.baseline.LossyBaseline;
 import com.logicompress.experiment.baseline.PlainDp;
 import com.logicompress.experiment.baseline.TdTr;
-import com.logicompress.experiment.baseline.Trajic;
 import com.logicompress.experiment.clean.DriftFilter;
 import com.logicompress.experiment.config.ExperimentConfig;
 import com.logicompress.experiment.geo.GeoUtil;
@@ -51,8 +49,8 @@ public final class HullShapeBenchmark {
         long t0 = System.currentTimeMillis();
         List<String[]> longRows = new ArrayList<>();
         Map<String, HullAgg> agg = new LinkedHashMap<>();
-        LossyBaseline[] baselines = {new PlainDp(), new Dps(), new TdTr(), new Trajic()};
-        String[] names = {"DP", "DPS", "TD-TR", "Trajic"};
+        LossyBaseline[] baselines = {new PlainDp(), new TdTr()};
+        String[] names = {"DP", "TD-TR"};
 
         int degenerate = 0;
         for (SupplementContext.WaybillCtx c : ctxs) {

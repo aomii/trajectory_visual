@@ -1,11 +1,9 @@
 package com.fkhwl.nfs.biz.experiment;
 
 import com.fkhwl.nfs.biz.util.WindowResultVerifier;
-import com.logicompress.experiment.baseline.Dps;
 import com.logicompress.experiment.baseline.LossyBaseline;
 import com.logicompress.experiment.baseline.PlainDp;
 import com.logicompress.experiment.baseline.TdTr;
-import com.logicompress.experiment.baseline.Trajic;
 import com.logicompress.experiment.clean.CleanedTrack;
 import com.logicompress.experiment.clean.DriftFilter;
 import com.logicompress.experiment.compress.SegmentedDp;
@@ -31,10 +29,10 @@ import java.util.List;
  *   <li>清洗 DriftFilter（漂移剔除 + 断线分段）；</li>
  *   <li>语义识别 SemanticAnalyzer（v2 静态同坐标停留合并，锚点=停留单元首末点+轨迹起止点）；</li>
  *   <li>分级抽稀 SegmentedDp：静止段只保留起终锚点，移动段 DP（容差默认 10m，用户 2026-09-09 定稿）；</li>
- *   <li>指标 Metrics：PED/SED（逐原始点），SR/语义单元完整率/停留时长保真度；</li>
+ *   <li>指标 Metrics：PED/SED（逐原始点），SR/候选单元完整率/候选观测跨度保持率；</li>
  *   <li>无损层 BlockEncoder：分块偏移量变长编码 + DEFLATE，保留 EncodedStore 供在线写 Mongo；</li>
  *   <li>部分解压 PartialDecoder：时间窗命中块校验（与全量解压一致性）；</li>
- *   <li>有损基线 PlainDp/Dps/TdTr/Trajic（同容差）。</li>
+ *   <li>有损基线 PlainDp/TdTr（阈值均以米计，但垂距与同步距离不是同一误差定义）。</li>
  * </ol>
  *
  * <p>可选关闭无损层/基线/部分解压，供消融变体复用（A3 去无损 / 去锚点等）。
@@ -46,7 +44,7 @@ public final class CompressionPipeline {
 
     /** 算法代码常量 */
     public static final String ALG_PROPOSED = "PROPOSED";
-    public static final String[] BASELINE_CODES = {"DP", "DPS", "TD-TR", "Trajic"};
+    public static final String[] BASELINE_CODES = {"DP", "TD-TR"};
 
     /**
      * 对单个运单执行完整压缩链路。无效轨迹（无点/清洗后不足 minPoints）返回 null。
@@ -155,7 +153,7 @@ public final class CompressionPipeline {
 
         if (baselines) {
             // ⑧ 完整组合基线：同一清洗轨迹、同一容差，并叠加与本文完全相同的分块编码器。
-            LossyBaseline[] b = {new PlainDp(), new Dps(), new TdTr(), new Trajic()};
+            LossyBaseline[] b = {new PlainDp(), new TdTr()};
             for (int i = 0; i < b.length; i++) {
                 List<Integer> bKept = b[i].compress(cleaned, cfg.baselineDpM);
                 if (bKept.isEmpty()) continue;

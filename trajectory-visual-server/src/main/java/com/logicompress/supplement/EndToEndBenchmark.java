@@ -1,10 +1,8 @@
 package com.logicompress.supplement;
 
-import com.logicompress.experiment.baseline.Dps;
 import com.logicompress.experiment.baseline.LossyBaseline;
 import com.logicompress.experiment.baseline.PlainDp;
 import com.logicompress.experiment.baseline.TdTr;
-import com.logicompress.experiment.baseline.Trajic;
 import com.logicompress.experiment.config.ExperimentConfig;
 import com.logicompress.experiment.encode.BlockEncoder;
 import com.logicompress.experiment.encode.EncodedStore;
@@ -52,8 +50,8 @@ public final class EndToEndBenchmark {
     public static void run(ExperimentConfig cfg, List<SupplementContext.WaybillCtx> ctxs, Path outDir)
             throws IOException {
         Map<String, Agg> aggs = new LinkedHashMap<>();
-        String[] names = {"本文候选锚点+DP", "DP", "DPS", "TD-TR", "Trajic"};
-        LossyBaseline[] baselines = {new PlainDp(), new Dps(), new TdTr(), new Trajic()};
+        String[] names = {"本文候选锚点+DP", "DP", "TD-TR"};
+        LossyBaseline[] baselines = {new PlainDp(), new TdTr()};
         for (String name : names) aggs.put(name, new Agg());
 
         for (SupplementContext.WaybillCtx c : ctxs) {

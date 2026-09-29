@@ -17,7 +17,7 @@ public class ExperimentProperties {
 
     /** 本文移动段 DP 容差，米（默认 10，与基线一致） */
     private double dpMoveToleranceM = 10.0;
-    /** 对比基线(DP/DPS/TD-TR/Trajic)容差，米 */
+    /** 对比基线(DP/TD-TR)容差，米 */
     private double baselineToleranceM = 10.0;
     /** 消融“收紧移动段容差”档容差，米 */
     private double ablationTightToleranceM = 8.0;

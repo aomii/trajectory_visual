@@ -32,7 +32,7 @@ import java.util.Map;
 public class EvaluationQueryService {
 
     private static final List<String> ALG_ORDER = java.util.Arrays.asList(
-            "PROPOSED", "DP", "DPS", "TD-TR", "Trajic");
+            "PROPOSED", "DP", "TD-TR");
 
     /** 对比基线代码：某批次里出现这些，说明它跑了完整的算法对比（6.3 主实验） */
     private static final List<String> BASELINE_CODES = java.util.Arrays.asList(
@@ -67,6 +67,36 @@ public class EvaluationQueryService {
     public List<TrajectoryEvalRun> runs() {
         return runMapper.selectList(new LambdaQueryWrapper<TrajectoryEvalRun>()
                 .orderByDesc(TrajectoryEvalRun::getId));
+    }
+
+    /** 各图表独立实验批次的来源。只选择成功且确有对应结果行的最新批次。 */
+    public Map<String, TrajectoryEvalRun> resultSources() {
+        Map<String, TrajectoryEvalRun> sources = new LinkedHashMap<>();
+        sources.put("ablation", latestRunWithAblation());
+        sources.put("parameter", latestRunWithParameter("dp_tolerance"));
+        sources.put("blockWindow", latestRunWithParameter("block_window"));
+        return sources;
+    }
+
+    private TrajectoryEvalRun latestRunWithAblation() {
+        for (TrajectoryEvalRun run : runs()) {
+            if (!"SUCCESS".equals(run.getStatus())) continue;
+            Long count = abMapper.selectCount(new LambdaQueryWrapper<TrajectoryEvalAblationResult>()
+                    .eq(TrajectoryEvalAblationResult::getRunId, run.getId()));
+            if (count != null && count > 0) return run;
+        }
+        return null;
+    }
+
+    private TrajectoryEvalRun latestRunWithParameter(String type) {
+        for (TrajectoryEvalRun run : runs()) {
+            if (!"SUCCESS".equals(run.getStatus())) continue;
+            Long count = paramMapper.selectCount(new LambdaQueryWrapper<TrajectoryEvalParamResult>()
+                    .eq(TrajectoryEvalParamResult::getRunId, run.getId())
+                    .eq(TrajectoryEvalParamResult::getParamType, type));
+            if (count != null && count > 0) return run;
+        }
+        return null;
     }
 
     /**
